@@ -1,0 +1,171 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Configurar 2FA — Taxi Admin</title>
+  <link rel="stylesheet" href="../css/styles.css?v=5">
+  <style>
+    .mfa-card { max-width:480px;margin:40px auto;background:#fff;border-radius:14px;padding:36px;box-shadow:0 2px 16px rgba(0,0,0,.10); }
+    .mfa-card h2 { font-size:20px;font-weight:700;color:#1a1a2e;margin-bottom:6px; }
+    .mfa-card p  { color:#666;font-size:14px;line-height:1.6; }
+    .qr-box { display:flex;justify-content:center;margin:24px 0; }
+    .step-num { display:inline-flex;align-items:center;justify-content:center;
+      width:26px;height:26px;border-radius:50%;background:#3B6D11;color:#fff;
+      font-size:13px;font-weight:700;margin-right:8px;flex-shrink:0; }
+    .step-row { display:flex;align-items:flex-start;margin-bottom:14px;font-size:14px;color:#333; }
+    .badge-ok { display:inline-block;background:#e8f5e9;color:#2e7d32;border-radius:20px;
+      padding:4px 14px;font-size:13px;font-weight:600; }
+    .badge-off { display:inline-block;background:#fce4ec;color:#c62828;border-radius:20px;
+      padding:4px 14px;font-size:13px;font-weight:600; }
+  </style>
+</head>
+<body style="background:#f4f6fb;padding:20px;">
+
+<div class="mfa-card">
+  <h2>🔐 Autenticación en dos pasos</h2>
+  <p style="margin-bottom:20px;">Protege tu cuenta con un código que se renueva cada 30 segundos.</p>
+
+  <div id="estado-mfa" style="margin-bottom:20px;"></div>
+
+  <!-- Paso 1 -->
+  <div class="step-row"><span class="step-num">1</span>
+    <div>Descarga <strong>Google Authenticator</strong> o <strong>Authy</strong> en tu celular si aún no lo tienes.</div>
+  </div>
+
+  <!-- Paso 2 -->
+  <div class="step-row"><span class="step-num">2</span>
+    <div>Genera tu código QR y escanéalo con la app autenticadora.</div>
+  </div>
+
+  <div style="text-align:center;margin-bottom:16px;">
+    <button class="btn btn-primary" id="btn-generar">Generar código QR</button>
+  </div>
+
+  <div id="qr-section" style="display:none;">
+    <div class="qr-box">
+      <div id="qr-code"></div>
+    </div>
+    <p style="text-align:center;font-size:12px;color:#888;margin-top:-10px;">
+      Escanea este código con tu app autenticadora
+    </p>
+
+    <!-- Paso 3 -->
+    <div class="step-row" style="margin-top:20px;"><span class="step-num">3</span>
+      <div>Ingresa el código de 6 dígitos que aparece en la app para confirmar que todo funciona.</div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Código de verificación</label>
+      <input class="form-input" type="text" id="totp-verify" placeholder="000000"
+        maxlength="6" inputmode="numeric"
+        style="letter-spacing:8px;font-size:22px;text-align:center;">
+    </div>
+
+    <div class="login-error" id="setup-error" style="display:none;"></div>
+
+    <button class="btn btn-success" id="btn-activar" style="width:100%;padding:12px;font-size:15px;">
+      ✓ Activar autenticación en dos pasos
+    </button>
+  </div>
+
+  <div style="margin-top:24px;padding-top:20px;border-top:1px solid #eee;">
+    <a href="configuracion.html" style="color:#666;font-size:13px;text-decoration:none;">← Volver a configuración</a>
+  </div>
+</div>
+
+<script src="https://unpkg.com/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script type="module">
+  import { Auth } from '../js/auth.js';
+  import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.0.0/firebase-functions.js';
+  import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore.js';
+  import { auth, db } from '../js/app.js';
+  import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js';
+
+  Auth.protect();
+
+  const estadoEl  = document.getElementById('estado-mfa');
+  const errorEl   = document.getElementById('setup-error');
+  const btnGen    = document.getElementById('btn-generar');
+  const btnActivar = document.getElementById('btn-activar');
+  const qrSection = document.getElementById('qr-section');
+
+  function showError(msg) { errorEl.textContent = msg; errorEl.style.display = 'block'; }
+  function hideError() { errorEl.style.display = 'none'; }
+
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) return;
+    try {
+      const snap = await getDoc(doc(db, 'admins', user.uid));
+      const mfaEnabled = snap.data()?.mfaEnabled ?? false;
+      estadoEl.innerHTML = mfaEnabled
+        ? '<span class="badge-ok">✓ 2FA activado</span>'
+        : '<span class="badge-off">✗ 2FA no configurado</span>';
+    } catch {}
+  });
+
+  btnGen.addEventListener('click', async () => {
+    btnGen.disabled    = true;
+    btnGen.textContent = 'Generando...';
+
+    try {
+      const generar = httpsCallable(Auth.getFns(), 'generarSecretoTotp');
+      const result  = await generar({});
+      const uri     = result.data.uri;
+
+      document.getElementById('qr-code').innerHTML = '';
+      new QRCode(document.getElementById('qr-code'), {
+        text: uri, width: 200, height: 200,
+        colorDark: '#1a1a2e', colorLight: '#ffffff',
+      });
+
+      qrSection.style.display = 'block';
+      document.getElementById('totp-verify').focus();
+    } catch (e) {
+      alert('Error al generar QR: ' + (e.message || e));
+    } finally {
+      btnGen.disabled    = false;
+      btnGen.textContent = 'Regenerar código QR';
+    }
+  });
+
+  document.getElementById('totp-verify').addEventListener('input', e => {
+    e.target.value = e.target.value.replace(/\D/g, '');
+    hideError();
+  });
+
+  document.getElementById('totp-verify').addEventListener('keydown', e => {
+    if (e.key === 'Enter') btnActivar.click();
+  });
+
+  btnActivar.addEventListener('click', async () => {
+    const code = document.getElementById('totp-verify').value.trim();
+    if (code.length !== 6) { showError('Ingresa los 6 dígitos'); return; }
+
+    btnActivar.disabled    = true;
+    btnActivar.textContent = 'Verificando...';
+    hideError();
+
+    try {
+      const activar = httpsCallable(Auth.getFns(), 'activarMfa');
+      await activar({ code });
+      estadoEl.innerHTML = '<span class="badge-ok">✓ 2FA activado</span>';
+      qrSection.style.display = 'none';
+      btnGen.textContent = 'Regenerar código QR';
+      alert('¡2FA activado correctamente! Desde ahora se pedirá el código al iniciar sesión.');
+    } catch (e) {
+      if (e.code === 'functions/permission-denied') {
+        showError('Código incorrecto. Espera 30 segundos y prueba con el siguiente código.');
+      } else {
+        showError('Error: ' + (e.message || e));
+      }
+    } finally {
+      btnActivar.disabled    = false;
+      btnActivar.textContent = '✓ Activar autenticación en dos pasos';
+      document.getElementById('totp-verify').value = '';
+    }
+  });
+</script>
+
+</body>
+</html>

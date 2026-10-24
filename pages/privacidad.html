@@ -1,0 +1,235 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Política de Privacidad — Taxi Admin</title>
+  <link rel="stylesheet" href="../css/styles.css?v=5">
+  <style>
+    .privacy-body { max-width: 760px; }
+    .privacy-body h2 {
+      font-size: 14px;
+      font-weight: 700;
+      color: #3B6D11;
+      margin: 28px 0 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .privacy-body p,
+    .privacy-body li {
+      font-size: 14px;
+      color: #555;
+      line-height: 1.75;
+    }
+    .privacy-body ul {
+      padding-left: 20px;
+      margin: 6px 0;
+    }
+    .privacy-meta {
+      font-size: 12px;
+      color: #999;
+      margin-bottom: 24px;
+    }
+    .privacy-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: #1a1a2e;
+      margin-bottom: 4px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- OVERLAY MÓVIL -->
+<div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <span class="logo-icon">🚕</span>
+    <span>Taxi Admin</span>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="nav-label">Principal</div>
+    <a href="dashboard.html" data-seccion="dashboard" class="nav-item">
+      <span class="nav-icon">📊</span> Dashboard
+    </a>
+    <a href="taxistas.html" data-seccion="taxistas" class="nav-item">
+      <span class="nav-icon">🧑‍✈️</span> Taxistas
+    </a>
+    <a href="clientes.html" data-seccion="clientes" class="nav-item">
+      <span class="nav-icon">👤</span> Clientes
+    </a>
+    <a href="viajes.html" data-seccion="viajes" class="nav-item">
+      <span class="nav-icon">🗺️</span> Viajes
+    </a>
+
+    <div class="nav-label" style="margin-top:12px;">Gestión</div>
+    <a href="reportes.html" data-seccion="reportes" class="nav-item">
+      <span class="nav-icon">📈</span> Reportes
+    </a>
+    <a href="zonas.html" data-seccion="zonas" class="nav-item">
+      <span class="nav-icon">📍</span> Zonas
+    </a>
+    <a href="promociones.html" data-seccion="promociones" class="nav-item"><span class="nav-icon">🎁</span> Promociones</a>
+    <a href="cotizador.html" data-seccion="cotizador" class="nav-item"><span class="nav-icon">🧮</span> Cotizador</a>
+    <a href="finanzas.html" data-seccion="finanzas" class="nav-item"><span class="nav-icon">💰</span> Finanzas</a>
+    <a href="distribucion.html" data-seccion="distribucion" class="nav-item">
+      <span class="nav-icon">📲</span> Distribución APK
+    </a>
+    <a href="privacidad.html" data-seccion="privacidad" class="nav-item active">
+      <span class="nav-icon">🔒</span> Privacidad
+    </a>
+    <a href="pruebas.html" data-seccion="pruebas" class="nav-item">
+      <span class="nav-icon">🧪</span> Pruebas
+    </a>
+      <div class="nav-label" style="margin-top:12px;">Administrador</div>
+    <a href="basededatos.html" data-seccion="basededatos" class="nav-item"><span class="nav-icon">🗄️</span> Base de datos</a>
+    <a href="configuracion.html" data-seccion="roles" class="nav-item">
+      <span class="nav-icon">⚙️</span> Roles
+    </a>
+</nav>
+
+  <div class="sidebar-footer">
+    <button class="btn-logout" id="btn-logout">
+      <span>🚪</span> Cerrar sesión
+    </button>
+  </div>
+</aside>
+
+<!-- CONTENIDO PRINCIPAL -->
+<div class="main-content">
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <button class="menu-toggle" id="menu-toggle">☰</button>
+      <h1 class="topbar-title">Política de Privacidad</h1>
+    </div>
+    <div class="topbar-right">
+      <span class="topbar-date" id="fecha-actual"></span>
+      <div class="topbar-avatar">A</div>
+    </div>
+  </header>
+
+  <!-- CONTENIDO -->
+  <main class="page-content">
+
+    <div class="section-card">
+      <div class="section-header">
+        <h2 class="section-title">Política de Privacidad — Taxi Huejutla</h2>
+      </div>
+
+      <div style="padding: 24px 28px;" class="privacy-body">
+
+        <p class="privacy-meta">Última actualización: 12 de junio de 2026</p>
+
+        <p>
+          Esta Política de Privacidad describe cómo la aplicación <strong>Taxi Huejutla</strong>
+          recopila, usa y protege la información de sus usuarios.
+          Al usar la aplicación, el usuario acepta los términos descritos aquí.
+        </p>
+
+        <h2>1. Información que recopilamos</h2>
+        <ul>
+          <li><strong>Nombre completo y número de teléfono</strong> — proporcionados al registrarse.</li>
+          <li><strong>Ubicación en tiempo real</strong> — solo durante un viaje activo (taxistas) o al solicitar un servicio (clientes). Se requiere permiso explícito del dispositivo.</li>
+          <li><strong>Fotografías de documentos</strong> — para taxistas: licencia, INE y documentos del vehículo, almacenados en Cloudinary.</li>
+          <li><strong>Token FCM</strong> — identificador del dispositivo para enviar notificaciones push. No identifica personalmente al usuario.</li>
+          <li><strong>Historial de viajes</strong> — rutas, tarifas y calificaciones de viajes realizados.</li>
+        </ul>
+
+        <h2>2. Cómo usamos la información</h2>
+        <ul>
+          <li>Conectar a clientes con taxistas disponibles.</li>
+          <li>Mostrar la ubicación del taxista al cliente durante el viaje.</li>
+          <li>Enviar notificaciones de estado del viaje (llegada del taxista, inicio, fin).</li>
+          <li>Verificar la identidad y documentación de los taxistas.</li>
+          <li>Calcular tarifas y registrar el historial de viajes.</li>
+        </ul>
+
+        <h2>3. Compartición de datos</h2>
+        <p>No vendemos ni cedemos información a terceros con fines comerciales. La información se comparte únicamente con:</p>
+        <ul>
+          <li><strong>Firebase (Google)</strong> — base de datos, autenticación y mensajería.</li>
+          <li><strong>Cloudinary</strong> — almacenamiento de imágenes de documentos.</li>
+          <li><strong>OpenStreetMap / OSRM</strong> — cálculo de rutas (sin datos personales).</li>
+        </ul>
+
+        <h2>4. Permisos del dispositivo</h2>
+        <ul>
+          <li><strong>Ubicación</strong> — para mostrar la posición en el mapa y calcular rutas.</li>
+          <li><strong>Cámara y almacenamiento</strong> — para cargar fotografías de documentos (taxistas).</li>
+          <li><strong>Notificaciones</strong> — para alertas de viajes y llegada del taxista.</li>
+          <li><strong>Vibración</strong> — para alertas de llegada del taxista.</li>
+        </ul>
+
+        <h2>5. Retención y eliminación de datos</h2>
+        <p>
+          Los datos se conservan mientras la cuenta esté activa. El usuario puede solicitar la eliminación
+          de su cuenta escribiendo al correo de contacto. Los datos se eliminan en un plazo máximo de 30 días hábiles.
+        </p>
+
+        <h2>6. Seguridad</h2>
+        <p>
+          Usamos Firebase Authentication para proteger el acceso a las cuentas y transmitimos todos
+          los datos mediante conexiones cifradas (HTTPS/TLS). Las imágenes se almacenan en Cloudinary
+          con acceso restringido.
+        </p>
+
+        <h2>7. Menores de edad</h2>
+        <p>La aplicación está dirigida a usuarios mayores de 18 años. No se recopila deliberadamente información de menores.</p>
+
+        <h2>8. Cambios a esta política</h2>
+        <p>
+          Podemos actualizar esta política ocasionalmente. Se notificará a los usuarios mediante
+          la aplicación sobre cambios significativos.
+        </p>
+
+        <h2>9. Contacto</h2>
+        <p>
+          Para preguntas o solicitudes sobre privacidad:<br>
+          <strong>21009982@es.uveg.edu.mx</strong>
+        </p>
+
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="../js/permisos.js"></script>
+<script>
+  Permisos.protegerPagina('privacidad');
+  Permisos.aplicarVisibilidadMenu();
+</script>
+
+<script>
+  const toggle = document.getElementById('menu-toggle');
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+
+  toggle?.addEventListener('click', () => {
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('active');
+  });
+  overlay?.addEventListener('click', () => {
+    sidebar.classList.remove('open');
+    overlay.classList.remove('active');
+  });
+
+  // Fecha actual en topbar
+  const d = new Date();
+  const el = document.getElementById('fecha-actual');
+  if (el) el.textContent = d.toLocaleDateString('es-MX', { weekday:'long', day:'numeric', month:'long' });
+
+  // Logout
+  document.getElementById('btn-logout')?.addEventListener('click', () => {
+    localStorage.removeItem('taxi_admin_session');
+    window.location.href = '../index.html';
+  });
+</script>
+
+</body>
+</html>

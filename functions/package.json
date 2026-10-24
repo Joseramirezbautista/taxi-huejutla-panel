@@ -1,0 +1,17 @@
+{
+  "name": "functions",
+  "description": "Cloud Functions — Taxi Admin",
+  "scripts": {
+    "deploy": "firebase deploy --only functions"
+  },
+  "engines": {
+    "node": "22"
+  },
+  "main": "index.js",
+  "dependencies": {
+    "firebase-admin": "^11.8.0",
+    "firebase-functions": "^7.2.5",
+    "otplib": "^12.0.1"
+  },
+  "private": true
+}

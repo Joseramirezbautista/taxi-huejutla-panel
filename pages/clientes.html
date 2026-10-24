@@ -1,0 +1,307 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clientes — Taxi Admin</title>
+  <link rel="stylesheet" href="../css/styles.css?v=5">
+</head>
+<body>
+
+<div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <span class="logo-icon">🚕</span>
+    <span>Taxi Admin</span>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="nav-label">Principal</div>
+    <a href="dashboard.html" data-seccion="dashboard" class="nav-item">
+      <span class="nav-icon">📊</span> Dashboard
+    </a>
+    <a href="taxistas.html" data-seccion="taxistas" class="nav-item">
+      <span class="nav-icon">🧑‍✈️</span> Taxistas
+    </a>
+    <a href="clientes.html" data-seccion="clientes" class="nav-item active">
+      <span class="nav-icon">👤</span> Clientes
+    </a>
+    <a href="viajes.html" data-seccion="viajes" class="nav-item">
+      <span class="nav-icon">🗺️</span> Viajes
+    </a>
+
+    <div class="nav-label" style="margin-top:12px;">Gestión</div>
+    <a href="reportes.html" data-seccion="reportes" class="nav-item">
+      <span class="nav-icon">📈</span> Reportes
+    </a>
+    <a href="zonas.html" data-seccion="zonas" class="nav-item">
+      <span class="nav-icon">📍</span> Zonas
+    </a>
+    <a href="promociones.html" data-seccion="promociones" class="nav-item"><span class="nav-icon">🎁</span> Promociones</a>
+    <a href="cotizador.html" data-seccion="cotizador" class="nav-item"><span class="nav-icon">🧮</span> Cotizador</a>
+    <a href="finanzas.html" data-seccion="finanzas" class="nav-item"><span class="nav-icon">💰</span> Finanzas</a>
+        <a href="distribucion.html" data-seccion="distribucion" class="nav-item">
+      <span class="nav-icon">📲</span> Distribución APK
+    </a>
+    <a href="privacidad.html" data-seccion="privacidad" class="nav-item">
+      <span class="nav-icon">🔒</span> Privacidad
+    </a>
+    <a href="pruebas.html" data-seccion="pruebas" class="nav-item">
+      <span class="nav-icon">🧪</span> Pruebas
+    </a>
+      <div class="nav-label" style="margin-top:12px;">Administrador</div>
+    <a href="basededatos.html" data-seccion="basededatos" class="nav-item"><span class="nav-icon">🗄️</span> Base de datos</a>
+    <a href="configuracion.html" data-seccion="roles" class="nav-item">
+      <span class="nav-icon">⚙️</span> Roles
+    </a>
+</nav>
+
+  <div class="sidebar-footer">
+    <button class="btn-logout" id="btn-logout">
+      <span>🚪</span> Cerrar sesión
+    </button>
+  </div>
+</aside>
+
+<!-- CONTENIDO PRINCIPAL -->
+<div class="main-content">
+
+  <header class="topbar">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <button class="menu-toggle" id="menu-toggle">☰</button>
+      <h1 class="topbar-title">Clientes</h1>
+    </div>
+    <div class="topbar-right">
+      <span class="topbar-date" id="fecha-actual"></span>
+      <div class="topbar-avatar">A</div>
+    </div>
+  </header>
+
+  <main class="page-content">
+
+    <!-- RESUMEN EN TIEMPO REAL -->
+    <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:20px;">
+
+      <div class="stat-card clientes-stat" onclick="activarFiltro('todos')" title="Ver todos">
+        <div class="stat-card-header">
+          <span class="stat-label">Total clientes</span>
+          <div class="stat-icon blue">👥</div>
+        </div>
+        <div class="stat-value" id="cnt-total">—</div>
+        <div class="stat-sub">Registrados</div>
+      </div>
+
+      <div class="stat-card clientes-stat" onclick="activarFiltro('activos')" title="Ver activos">
+        <div class="stat-card-header">
+          <span class="stat-label">Activos</span>
+          <div class="stat-icon green">✅</div>
+        </div>
+        <div class="stat-value" id="cnt-activos">—</div>
+        <div class="stat-sub">Sin bloqueo</div>
+      </div>
+
+      <div class="stat-card clientes-stat" id="card-bloqueados" onclick="activarFiltro('bloqueados')" title="Ver bloqueados">
+        <div class="stat-card-header">
+          <span class="stat-label">Bloqueados</span>
+          <div class="stat-icon red">🚫</div>
+        </div>
+        <div class="stat-value" id="cnt-bloqueados">—</div>
+        <div class="stat-sub">Acceso restringido</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-card-header">
+          <span class="stat-label">Nuevos hoy</span>
+          <div class="stat-icon yellow">🆕</div>
+        </div>
+        <div class="stat-value" id="cnt-nuevos">—</div>
+        <div class="stat-sub">Registros de hoy</div>
+      </div>
+
+    </div>
+
+    <div class="section-card">
+
+      <!-- FILTROS + BUSCADOR -->
+      <div class="filters-bar">
+        <button class="filter-btn active" data-filtro="todos">Todos</button>
+        <button class="filter-btn" data-filtro="activos">Activos</button>
+        <button class="filter-btn" data-filtro="bloqueados">Bloqueados</button>
+        <a href="crear-usuario.html?tipo=cliente" id="link-crear-cliente" class="btn btn-danger btn-sm" style="background:#7f1d1d;border-color:#7f1d1d;color:#fff;">👤 Crear usuario cliente</a>
+
+        <div class="search-box">
+          <span>🔍</span>
+          <input
+            type="text"
+            id="input-buscar"
+            placeholder="Buscar por nombre o teléfono..."
+          >
+        </div>
+      </div>
+
+      <!-- CONTADOR -->
+      <div style="padding:10px 22px 0;font-size:12.5px;color:#aaa;">
+        <span id="count-clientes">0</span> clientes encontrados
+      </div>
+
+      <!-- TABLA -->
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Cliente</th>
+              <th>Teléfono</th>
+              <th>Viajes</th>
+              <th>Calificación</th>
+              <th>Estado</th>
+              <th>Conexión</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-clientes">
+            <tr class="loading-row"><td colspan="7">Cargando clientes...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+
+  </main>
+</div>
+
+<!-- MODAL DETALLE CLIENTE -->
+<div id="modal-cliente" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.55);z-index:1000;align-items:center;justify-content:center;padding:24px;">
+  <div class="modal-det-box" style="max-width:460px;width:100%;overflow:hidden;">
+
+    <div id="modal-c-portada-wrap" class="cliente-modal-portada" onclick="abrirPortadaCliente()" style="display:none;">
+      <img id="modal-c-portada" src="" alt="">
+    </div>
+
+    <div class="modal-det-header">
+      <div style="display:flex;align-items:center;gap:14px;">
+        <div id="modal-c-avatar-wrap" class="cliente-modal-avatar" onclick="abrirFotoCliente()" style="position:relative;z-index:1;">
+          <img id="modal-c-foto" src="" alt="" style="display:none;width:100%;height:100%;object-fit:cover;border-radius:50%;">
+          <span id="modal-c-initials" style="font-size:20px;font-weight:700;color:#0C447C;"></span>
+        </div>
+        <div>
+          <h3 id="modal-c-nombre" style="font-size:17px;font-weight:700;color:#1a1a2e;margin-bottom:5px;"></h3>
+          <span id="modal-c-estado-badge" class="badge" style="font-size:11px;"></span>
+          <span id="modal-c-presencia-badge" class="badge" style="font-size:11px;margin-left:4px;"></span>
+        </div>
+      </div>
+      <button onclick="cerrarModalCliente()"
+        style="background:none;border:none;font-size:22px;cursor:pointer;color:#888;line-height:1;padding:4px;flex-shrink:0;">✕</button>
+    </div>
+
+    <div class="modal-det-body">
+      <div class="tarifa-fields" style="padding:0 22px 12px;">
+        <div class="modal-field-row"><span class="mfr-label">Teléfono</span><span id="modal-c-telefono" class="mfr-value"></span></div>
+        <div class="modal-field-row"><span class="mfr-label">Colonia</span><span id="modal-c-colonia" class="mfr-value"></span></div>
+        <div class="modal-field-row"><span class="mfr-label">Viajes realizados</span><span id="modal-c-viajes" class="mfr-value"></span></div>
+        <div class="modal-field-row"><span class="mfr-label">Calificación</span><span id="modal-c-calificacion" class="mfr-value"></span></div>
+        <div class="modal-field-row"><span class="mfr-label">Registro</span><span id="modal-c-fecha" class="mfr-value"></span></div>
+      </div>
+    </div>
+
+    <div class="modal-det-footer">
+      <button type="button" class="btn btn-danger" id="btn-eliminar-cliente" onclick="eliminarDesdeModal()" style="background:#7f1d1d;border-color:#7f1d1d;color:#fff;margin-right:auto;">🗑 Eliminar cuenta</button>
+      <button type="button" class="btn btn-outline" onclick="verHistorialCliente()">🗂 Historial</button>
+      <button type="button" class="btn btn-danger" id="btn-toggle-bloqueo" onclick="toggleBloqueoDesdeModal()">⊘ Bloquear</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- LIGHTBOX FOTO CLIENTE -->
+<div id="lightbox-cliente" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.93);z-index:2000;align-items:center;justify-content:center;flex-direction:column;">
+  <button onclick="cerrarFotoCliente()" style="position:absolute;top:18px;right:22px;background:none;border:none;color:#fff;font-size:30px;cursor:pointer;line-height:1;">✕</button>
+  <img id="lightbox-cliente-img" src="" alt="" style="max-width:92vw;max-height:82vh;border-radius:12px;object-fit:contain;box-shadow:0 8px 40px rgba(0,0,0,0.6);">
+  <p id="lightbox-cliente-label" style="color:#aaa;margin-top:14px;font-size:13px;font-family:Inter,sans-serif;"></p>
+</div>
+
+<!-- FIREBASE COMPAT SDK -->
+<script src="../js/permisos.js"></script>
+<script>
+  Permisos.protegerPagina('clientes');
+  Permisos.aplicarVisibilidadMenu();
+  Permisos.ocultarSiNoPuede('#link-crear-cliente', 'clientes', 'crear');
+  Permisos.ocultarSiNoPuede('#btn-toggle-bloqueo', 'clientes', 'editar');
+  Permisos.ocultarSiNoPuede('#btn-eliminar-cliente', 'clientes', 'eliminar');
+</script>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-functions-compat.js"></script>
+<script>
+  firebase.initializeApp({
+    apiKey: "AIzaSyD2j_rGW0l0Boplo7bATx6ywFjAHhhcBHI",
+    authDomain: "taxi-huejutla.firebaseapp.com",
+    projectId: "taxi-huejutla",
+    storageBucket: "taxi-huejutla.firebasestorage.app",
+    messagingSenderId: "704815846259",
+    appId: "1:704815846259:web:f7da2d477cfd6157742b06"
+  });
+  firebase.auth().onAuthStateChanged(function(user) {
+    if (!user) { window.location.href = 'login.html'; return; }
+    var s = document.createElement('script');
+    s.src = '../js/clientes.js?v=' + Date.now();
+    document.body.appendChild(s);
+  });
+
+  window.eliminarDesdeModal = async function() {
+    if (window.Permisos && !window.Permisos.puede('clientes', 'eliminar')) {
+      alert('No tienes permiso para eliminar clientes.');
+      return;
+    }
+    var modal = document.getElementById('modal-cliente');
+    var clienteId = modal.dataset.uid || window._clienteActualId;
+    if (!clienteId) { alert('Error: no se encontró el ID del cliente.'); return; }
+    var nombre = document.getElementById('modal-c-nombre')?.textContent || 'este cliente';
+    if (!confirm('⚠️ ¿Eliminar la cuenta de ' + nombre + '?\n\nSe borrará de Firebase Auth y Firestore. Podrá registrarse nuevamente.')) return;
+    var btn = document.getElementById('btn-eliminar-cliente');
+    if (btn) { btn.disabled = true; btn.textContent = 'Eliminando…'; }
+    try {
+      var fn = firebase.functions().httpsCallable('eliminarCuenta');
+      await fn({ uid: clienteId, coleccion: 'clientes' });
+      alert('🗑 Cuenta eliminada. El usuario puede registrarse nuevamente.');
+      cerrarModalCliente();
+    } catch(e) {
+      alert('Error: ' + (e.message || e));
+      if (btn) { btn.disabled = false; btn.textContent = '🗑 Eliminar cuenta'; }
+    }
+  };
+</script>
+
+<!-- MENÚ MÓVIL -->
+<script>
+  const toggle = document.getElementById('menu-toggle');
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+
+  toggle?.addEventListener('click', () => {
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('active');
+  });
+
+  overlay?.addEventListener('click', () => {
+    sidebar.classList.remove('open');
+    overlay.classList.remove('active');
+  });
+
+  document.getElementById('lightbox-cliente')?.addEventListener('click', e => {
+    if (e.target.id === 'lightbox-cliente') cerrarFotoCliente();
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      cerrarFotoCliente();
+      cerrarModalCliente();
+    }
+  });
+</script>
+
+</body>
+</html>

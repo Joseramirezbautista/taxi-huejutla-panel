@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Finanzas — Taxi Admin</title>
+  <link rel="stylesheet" href="../css/styles.css?v=5">
+  <style>
+    /* ===== FINANZAS (solo esta pagina) ===== */
+    .fz { display:flex; flex-direction:column; gap:18px; font-variant-numeric:tabular-nums; }
+    .fz-muted { font-size:12.5px; color:#5f5f6e; }
+    .fz-tabs { display:flex; gap:4px; border-bottom:1px solid #e4e4e4; flex-wrap:wrap; }
+    .fz-tab { border:none; background:none; padding:10px 14px; font-family:inherit; font-size:13.5px; font-weight:600; color:#5f5f6e; cursor:pointer; border-bottom:3px solid transparent; }
+    .fz-tab.sel { color:var(--dark); font-weight:700; border-bottom-color:var(--green); }
+    .fz-cuenta { background:#C1443C; color:#fff; font-size:11px; font-weight:700; border-radius:10px; padding:1px 7px; margin-left:4px; }
+    .fz-filtros { display:flex; flex-wrap:wrap; gap:10px; align-items:center; background:#fff; border:1px solid #efefef; border-radius:12px; padding:12px 16px; }
+    .fz-seg { display:inline-flex; border:1px solid #e0e0e0; border-radius:8px; overflow:hidden; }
+    .fz-seg button { padding:8px 14px; border:none; background:#fff; font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; color:#333; }
+    .fz-seg button + button { border-left:1px solid #e0e0e0; }
+    .fz-seg button.sel { background:var(--dark); color:#fff; }
+    .fz-input, .fz-select { border:1px solid #e0e0e0; border-radius:8px; padding:8px 10px; font-family:inherit; font-size:13px; background:#fff; outline:none; }
+    .fz-input:focus, .fz-select:focus { border-color:var(--green); }
+    .fz-check { display:inline-flex; gap:8px; align-items:center; font-size:13px; }
+    .fz-check input { width:16px; height:16px; accent-color:var(--green); }
+    .fz-aviso { display:flex; flex-wrap:wrap; gap:12px; align-items:center; border-radius:12px; padding:13px 16px; }
+    .fz-aviso.rojo { background:#FCEBEB; border:1px solid #f2c4c0; color:#791F1F; }
+    .fz-aviso.ambar { background:#FAEEDA; border:1px solid #efd3a6; color:#633806; }
+    .fz-aviso .ico { width:30px; height:30px; border-radius:50%; color:#fff; display:inline-flex; align-items:center; justify-content:center; font-weight:800; flex-shrink:0; }
+    .fz-aviso.rojo .ico { background:#C1443C; }
+    .fz-aviso.ambar .ico { background:#C9852B; }
+    .fz-aviso .txt { flex:1 1 360px; min-width:0; font-size:12.5px; }
+    .fz-aviso .txt b { display:block; font-size:14px; margin-bottom:2px; }
+    .fz-kpis { display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:12px; }
+    .fz-kpi { background:#fff; border:1px solid #efefef; border-radius:12px; padding:14px 16px; display:flex; flex-direction:column; gap:4px; }
+    .fz-kpi .l { font-size:11.5px; color:#5f5f6e; font-weight:600; }
+    .fz-kpi .v { font-size:22px; font-weight:800; color:var(--dark); }
+    .fz-kpi .t { font-size:11.5px; font-weight:600; }
+    .fz-kpi.oscuro { background:var(--dark); border-color:var(--dark); }
+    .fz-kpi.oscuro .l, .fz-kpi.oscuro .t { color:#c9c9d6; }
+    .fz-kpi.oscuro .v { color:#a6dc7a; }
+    .bien { color:#27500A; } .mal { color:#791F1F; } .neutro { color:#5f5f6e; }
+    .fz-fila { display:flex; flex-wrap:wrap; gap:18px; align-items:stretch; }
+    .fz-card { background:#fff; border:1px solid #efefef; border-radius:12px; padding:18px 20px; display:flex; flex-direction:column; gap:12px; min-width:0; }
+    .fz-card h2 { margin:0; font-size:15px; font-weight:700; color:var(--dark); }
+    .fz-card.oscura { background:var(--dark); border-color:var(--dark); color:#fff; }
+    .fz-card.oscura h2 { color:#fff; }
+    .fz-eyebrow { font-size:11px; letter-spacing:.07em; text-transform:uppercase; color:var(--green); font-weight:700; }
+    .fz-card.oscura .fz-eyebrow { color:#a6dc7a; }
+    .fz-par { display:flex; justify-content:space-between; gap:10px; font-size:13px; }
+    .fz-cascada { display:grid; grid-template-columns:minmax(120px, 190px) minmax(0, 1fr) 86px; gap:9px 14px; align-items:center; font-size:13px; }
+    .fz-pista { height:24px; position:relative; background:#f6f6f6; border-radius:6px; }
+    .fz-pista > div { position:absolute; top:0; bottom:0; border-radius:6px; }
+    .fz-grafica { display:flex; gap:10px; }
+    .fz-eje { display:flex; flex-direction:column; justify-content:space-between; height:170px; font-size:11px; color:#5f5f6e; text-align:right; width:46px; flex-shrink:0; }
+    .fz-barras { position:relative; height:170px; display:flex; align-items:flex-end; gap:3px; border-bottom:1px solid #e4e4e4; }
+    .fz-barras .b { flex:1; min-width:0; border-radius:3px 3px 0 0; }
+    .fz-linea { position:absolute; left:0; right:0; border-top:2px dashed #C1443C; }
+    .fz-x { display:flex; justify-content:space-between; font-size:11px; color:#5f5f6e; margin-top:6px; }
+    .fz-ley { display:flex; gap:14px; flex-wrap:wrap; font-size:12px; color:#5f5f6e; }
+    .fz-ley span { display:inline-flex; gap:6px; align-items:center; }
+    .fz-ley i { width:10px; height:10px; border-radius:3px; display:inline-block; }
+    .fz-limites { display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:12px; }
+    .fz-lim { border:1px solid #efefef; border-radius:10px; padding:13px 14px; display:flex; flex-direction:column; gap:7px; background:#fff; text-align:left; font-family:inherit; cursor:pointer; color:var(--dark); }
+    .fz-lim:hover { border-color:#cfd8c4; }
+    .fz-chip { font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:10px; white-space:nowrap; }
+    .fz-medidor { position:relative; height:8px; border-radius:4px; background:#f0f0f0; }
+    .fz-medidor > div { height:100%; border-radius:4px; }
+    .fz-medidor > span { position:absolute; top:-3px; bottom:-3px; width:2px; background:var(--dark); }
+    .fz-grupos { display:grid; grid-template-columns:100px minmax(0, 1fr) 150px; gap:10px 12px; align-items:center; font-size:13px; }
+    .fz-grupos .p { height:18px; background:#f3f3f3; border-radius:5px; }
+    .fz-grupos .p > div { height:100%; border-radius:5px; }
+    .fz-tabla { overflow-x:auto; }
+    .fz-tabla table { width:100%; border-collapse:collapse; font-size:13px; }
+    .fz-tabla th { text-align:left; color:#5f5f6e; font-size:11.5px; font-weight:600; background:#fafafa; padding:10px; white-space:nowrap; }
+    .fz-tabla td { padding:10px; border-top:1px solid #f3f3f3; }
+    .fz-tabla th:first-child, .fz-tabla td:first-child { padding-left:20px; }
+    .fz-tabla th:last-child, .fz-tabla td:last-child { padding-right:20px; }
+    .der { text-align:right !important; }
+    .fz-sim { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); }
+    .fz-sim > div { padding:14px 20px; border-right:1px solid #f3f3f3; }
+    .fz-sim .v { font-size:20px; font-weight:800; }
+    .fz-campo { display:flex; flex-direction:column; gap:4px; }
+    .fz-campo label { font-size:11.5px; color:#5f5f6e; font-weight:600; }
+    .fz-oculto { display:none !important; }
+    .fz-modal { position:fixed; inset:0; background:rgba(26,26,46,.55); z-index:200; display:flex; align-items:flex-start; justify-content:center; padding:40px 16px; overflow-y:auto; }
+    .fz-dialogo { width:min(860px, 100%); background:#fff; border-radius:14px; box-shadow:0 20px 60px rgba(0,0,0,.3); display:flex; flex-direction:column; overflow:hidden; }
+    .fz-dialogo header { padding:18px 22px 0; display:flex; justify-content:space-between; gap:12px; align-items:flex-start; }
+    .fz-dialogo h2 { margin:0; font-size:18px; font-weight:700; }
+    .fz-cerrar { border:none; background:#f2f2f2; width:34px; height:34px; border-radius:8px; cursor:pointer; font-size:18px; font-family:inherit; }
+    .fz-dialogo .cuerpo { padding:16px 22px; display:flex; flex-direction:column; gap:14px; }
+    .fz-dialogo footer { padding:14px 22px; border-top:1px solid #ececec; background:#fafafa; display:flex; justify-content:flex-end; gap:10px; }
+    .fz-dialogo input[type=number] { width:96px; }
+    .fz-cargando { padding:40px; text-align:center; color:#8a8a8a; }
+  </style>
+</head>
+<body>
+
+<div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <span class="logo-icon">🚕</span>
+    <span>Taxi Admin</span>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-label">Principal</div>
+    <a href="dashboard.html" data-seccion="dashboard" class="nav-item"><span class="nav-icon">📊</span> Dashboard</a>
+    <a href="taxistas.html" data-seccion="taxistas" class="nav-item"><span class="nav-icon">🧑‍✈️</span> Taxistas</a>
+    <a href="clientes.html" data-seccion="clientes" class="nav-item"><span class="nav-icon">👤</span> Clientes</a>
+    <a href="viajes.html" data-seccion="viajes" class="nav-item"><span class="nav-icon">🗺️</span> Viajes</a>
+    <div class="nav-label" style="margin-top:12px;">Gestión</div>
+    <a href="reportes.html" data-seccion="reportes" class="nav-item"><span class="nav-icon">📈</span> Reportes</a>
+    <a href="zonas.html" data-seccion="zonas" class="nav-item"><span class="nav-icon">📍</span> Zonas</a>
+    <a href="promociones.html" data-seccion="promociones" class="nav-item"><span class="nav-icon">🎁</span> Promociones</a>
+    <a href="cotizador.html" data-seccion="cotizador" class="nav-item"><span class="nav-icon">🧮</span> Cotizador</a>
+    <a href="finanzas.html" data-seccion="finanzas" class="nav-item active"><span class="nav-icon">💰</span> Finanzas <span class="fz-cuenta fz-oculto" id="menu-avisos">0</span></a>
+    <a href="pruebas.html" data-seccion="pruebas" class="nav-item"><span class="nav-icon">🧪</span> Pruebas</a>
+    <a href="distribucion.html" data-seccion="distribucion" class="nav-item"><span class="nav-icon">📲</span> Distribución APK</a>
+    <a href="privacidad.html" data-seccion="privacidad" class="nav-item"><span class="nav-icon">🔒</span> Privacidad</a>
+    <div class="nav-label" style="margin-top:12px;">Administrador</div>
+    <a href="basededatos.html" data-seccion="basededatos" class="nav-item"><span class="nav-icon">🗄️</span> Base de datos</a>
+    <a href="configuracion.html" data-seccion="roles" class="nav-item"><span class="nav-icon">⚙️</span> Roles</a>
+  </nav>
+  <div class="sidebar-footer">
+    <button type="button" class="btn-logout" id="btn-logout"><span>🚪</span> Cerrar sesión</button>
+  </div>
+</aside>
+
+<div class="main-content">
+  <header class="topbar">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <button type="button" class="menu-toggle" id="menu-toggle">☰</button>
+      <h1 class="topbar-title">Finanzas</h1>
+    </div>
+    <div class="topbar-right">
+      <button type="button" class="btn btn-outline btn-sm" id="btn-precios">Precios y gastos fijos</button>
+      <button type="button" class="btn btn-outline btn-sm" id="btn-csv">Exportar CSV</button>
+      <span class="topbar-date" id="fecha-actual"></span>
+    </div>
+  </header>
+
+  <main class="page-content">
+    <div class="fz">
+      <div class="fz-tabs" role="tablist" aria-label="Vistas de finanzas">
+        <button type="button" class="fz-tab sel" role="tab" data-tab="resumen">Resumen</button>
+        <button type="button" class="fz-tab" role="tab" data-tab="taxistas">Por taxista</button>
+        <button type="button" class="fz-tab" role="tab" data-tab="clientes">Por cliente</button>
+        <button type="button" class="fz-tab" role="tab" data-tab="limites">Límites y alertas <span class="fz-cuenta fz-oculto" id="tab-avisos">0</span></button>
+      </div>
+
+      <section class="fz-filtros" aria-label="Filtros">
+        <div class="fz-seg" id="seg-modo">
+          <button type="button" data-modo="dia">Día</button>
+          <button type="button" data-modo="semana">Semana</button>
+          <button type="button" data-modo="mes" class="sel">Mes</button>
+          <button type="button" data-modo="anio">Año</button>
+        </div>
+        <label class="fz-muted" for="inp-fecha">Fecha</label>
+        <input type="date" id="inp-fecha" class="fz-input">
+        <span class="fz-muted" id="txt-rango"></span>
+        <label class="fz-muted" for="sel-ciudad">Ciudad</label>
+        <select id="sel-ciudad" class="fz-select"><option value="">Todas</option></select>
+        <label class="fz-check fz-oculto" id="lbl-sim" style="margin-left:auto;"><input type="checkbox" id="chk-sim"> <span id="txt-sim">Ver como si tuviera taxistas</span></label>
+        <label class="fz-check" style="margin-left:auto;"><input type="checkbox" id="chk-comparar" checked> Comparar con los mismos días del periodo anterior</label>
+      </section>
+
+      <div id="estado-carga" class="fz-cargando">Cargando datos...</div>
+
+      <!-- ===== RESUMEN ===== -->
+      <div id="vista-resumen" class="fz fz-oculto">
+        <section id="aviso-sim" class="fz-aviso ambar fz-oculto" aria-label="Modo cotización"></section>
+        <section id="avisos" class="fz" aria-label="Avisos" style="gap:10px;"></section>
+        <section class="fz-kpis" id="kpis" aria-label="Resumen"></section>
+
+        <div class="fz-fila">
+          <section class="fz-card" style="flex:999 1 520px;" aria-label="Cascada">
+            <h2 id="cascada-titulo">—</h2>
+            <div class="fz-cascada" id="cascada"></div>
+            <p class="fz-muted" style="margin:0;" id="cascada-nota"></p>
+          </section>
+          <div style="flex:1 1 280px; display:flex; flex-direction:column; gap:18px; min-width:0;">
+            <section class="fz-card oscura" id="card-proyeccion" aria-label="Proyección"></section>
+            <section class="fz-card" id="card-promos" aria-label="Promociones"></section>
+          </div>
+        </div>
+
+        <section class="fz-card" aria-label="Gasto por día">
+          <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;align-items:baseline;">
+            <h2 id="grafica-titulo">Gasto de servicios por día</h2>
+            <div class="fz-ley">
+              <span><i style="background:#2F6FB2;"></i>Dentro del presupuesto</span>
+              <span><i style="background:#C9852B;"></i>Pasó el presupuesto</span>
+              <span><i style="width:14px;height:0;border-top:2px dashed #C1443C;border-radius:0;"></i>Presupuesto</span>
+            </div>
+          </div>
+          <div class="fz-grafica">
+            <div class="fz-eje" id="graf-eje"></div>
+            <div style="flex:1;min-width:0;">
+              <div class="fz-barras" id="graf-barras"></div>
+              <div class="fz-x" id="graf-x"></div>
+            </div>
+          </div>
+          <p class="fz-muted" style="margin:0;">Google, Firebase y SMS. Pasa el cursor sobre una barra para ver el detalle.</p>
+        </section>
+
+        <section class="fz-card" aria-label="Lo gratis que te queda">
+          <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;align-items:baseline;">
+            <h2>Lo gratis que te queda este mes</h2>
+            <span class="fz-muted">La rayita marca tu aviso · Toca uno para ver el detalle</span>
+          </div>
+          <div class="fz-limites" id="limites"></div>
+        </section>
+
+        <div class="fz-fila" id="unitarios"></div>
+
+        <section class="fz-card" style="padding:0;gap:0;overflow:hidden;" aria-label="Simulador">
+          <div style="padding:16px 20px;border-bottom:1px solid #f0f0f0;display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;justify-content:space-between;">
+            <div>
+              <h2>¿Y si crezco?</h2>
+              <p class="fz-muted" style="margin:4px 0 0;">Un mes completo con tus precios capturados. Supone 10% de clientes nuevos al mes.</p>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:12px;">
+              <div class="fz-campo"><label for="sim-tax">Taxistas</label><input id="sim-tax" type="number" min="0" class="fz-input" style="width:90px;" value="200"></div>
+              <div class="fz-campo"><label for="sim-cli">Clientes activos</label><input id="sim-cli" type="number" min="0" class="fz-input" style="width:90px;" value="1600"></div>
+              <div class="fz-campo"><label for="sim-via">Viajes por taxista</label><input id="sim-via" type="number" min="0" class="fz-input" style="width:90px;" value="75"></div>
+              <div class="fz-campo"><label for="sim-mem">Membresía</label><input id="sim-mem" type="number" min="0" class="fz-input" style="width:90px;" value="150"></div>
+            </div>
+          </div>
+          <div class="fz-sim" id="sim-res"></div>
+        </section>
+      </div>
+
+      <!-- ===== POR TAXISTA ===== -->
+      <div id="vista-taxistas" class="fz fz-oculto">
+        <div class="fz-fila">
+          <section class="fz-kpis" id="tax-kpis" style="flex:1 1 300px;grid-template-columns:repeat(2,minmax(0,1fr));" aria-label="Resumen de taxistas"></section>
+          <section class="fz-card" style="flex:2 1 420px;" aria-label="Taxistas según sus viajes">
+            <h2>Taxistas según cuántos viajes hicieron</h2>
+            <div class="fz-grupos" id="tax-grupos"></div>
+            <p class="fz-muted" style="margin:0;">Los que pagan y casi no trabajan son puro ingreso; los que más viajan son los que más gastan en Google.</p>
+          </section>
+        </div>
+        <section class="fz-card" style="padding:0;gap:0;overflow:hidden;" aria-label="Lista de taxistas">
+          <div style="padding:14px 20px;border-bottom:1px solid #f0f0f0;display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
+            <input type="search" id="tax-buscar" class="fz-input" style="flex:1 1 240px;" placeholder="Buscar por nombre o teléfono" aria-label="Buscar taxista">
+            <select id="tax-filtro" class="fz-select" aria-label="Filtrar taxistas">
+              <option value="todos">Todos</option>
+              <option value="pagaron">Al corriente</option>
+              <option value="deben">Atrasados</option>
+              <option value="credito">Con crédito de promociones</option>
+              <option value="sinviajes">Sin viajes</option>
+            </select>
+            <select id="tax-orden" class="fz-select" aria-label="Ordenar taxistas">
+              <option value="viajes">Más viajes primero</option>
+              <option value="gasto">Más gasto primero</option>
+              <option value="deja">Menos te deja primero</option>
+            </select>
+          </div>
+          <div class="fz-tabla">
+            <table>
+              <thead><tr><th>Taxista</th><th class="der">Viajes</th><th>Membresía</th><th class="der">Cobrado en el periodo</th><th class="der">Crédito por promos</th><th class="der">Gasto que genera</th><th class="der">Te deja</th></tr></thead>
+              <tbody id="tax-tbody"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <!-- ===== POR CLIENTE ===== -->
+      <div id="vista-clientes" class="fz fz-oculto">
+        <section class="fz-kpis" id="cli-kpis" aria-label="Resumen de clientes"></section>
+        <div class="fz-fila">
+          <section class="fz-card" style="flex:1 1 440px;padding:0;gap:0;overflow:hidden;" aria-label="Promociones">
+            <h2 style="padding:14px 20px;border-bottom:1px solid #f0f0f0;">¿Valió la pena la promoción?</h2>
+            <div class="fz-tabla">
+              <table>
+                <thead><tr><th>Promoción</th><th class="der">Usos</th><th class="der">Te costó</th><th class="der">Regresaron</th></tr></thead>
+                <tbody id="cli-promos"></tbody>
+              </table>
+            </div>
+          </section>
+          <section class="fz-card" style="flex:1 1 360px;" aria-label="Clientes según viajes">
+            <h2>Clientes según cuántos viajes hicieron</h2>
+            <div class="fz-grupos" id="cli-grupos" style="grid-template-columns:90px minmax(0,1fr) 60px;"></div>
+          </section>
+        </div>
+        <section class="fz-card" style="padding:0;gap:0;overflow:hidden;" aria-label="Lista de clientes">
+          <div style="padding:14px 20px;border-bottom:1px solid #f0f0f0;display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
+            <input type="search" id="cli-buscar" class="fz-input" style="flex:1 1 240px;" placeholder="Buscar por nombre o teléfono" aria-label="Buscar cliente">
+            <select id="cli-filtro" class="fz-select" aria-label="Filtrar clientes">
+              <option value="todos">Todos</option>
+              <option value="nuevos">Nuevos en el periodo</option>
+              <option value="promo">Usaron promoción</option>
+              <option value="noregresaron">Nuevos que no regresaron</option>
+            </select>
+          </div>
+          <div class="fz-tabla">
+            <table>
+              <thead><tr><th>Cliente</th><th class="der">Viajes</th><th>Promoción</th><th class="der">Descuento</th><th class="der">Gasto que genera</th></tr></thead>
+              <tbody id="cli-tbody"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <!-- ===== LIMITES Y ALERTAS ===== -->
+      <div id="vista-limites" class="fz fz-oculto">
+        <section class="fz-card" style="padding:0;gap:0;overflow:hidden;" aria-label="Límites por servicio">
+          <div style="padding:16px 20px;border-bottom:1px solid #f0f0f0;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;align-items:center;">
+            <div>
+              <h2>Cuándo avisarte</h2>
+              <p class="fz-muted" style="margin:4px 0 0;">Un aviso cuando llegas al porcentaje de lo gratis, y otro si pasas tu tope en pesos del mes. Los avisos salen en esta página.</p>
+            </div>
+            <button type="button" class="btn btn-primary" id="btn-guardar-limites">Guardar cambios</button>
+          </div>
+          <div class="fz-tabla">
+            <table>
+              <thead><tr><th>Servicio</th><th>Gratis</th><th>Uso ahora</th><th>Avisar al</th><th>Tope del mes</th><th class="der">Gasto del mes</th></tr></thead>
+              <tbody id="lim-tbody"></tbody>
+            </table>
+          </div>
+        </section>
+        <div class="fz-fila">
+          <section class="fz-card" style="flex:1 1 300px;" aria-label="Presupuesto diario">
+            <h2>Presupuesto diario</h2>
+            <p class="fz-muted" style="margin:0;">Es la raya roja de la gráfica. Si un día gastas más en servicios, sale un aviso.</p>
+            <div class="fz-campo"><label for="inp-presupuesto">Pesos por día</label><input id="inp-presupuesto" type="number" min="0" class="fz-input" style="width:120px;"></div>
+          </section>
+          <section class="fz-card" style="flex:2 1 420px;" aria-label="Avisos activos">
+            <h2>Avisos activos ahora</h2>
+            <div id="lim-avisos" class="fz-muted">Sin avisos.</div>
+          </section>
+        </div>
+        <div class="cot-aviso" id="lim-guardado" style="display:none;"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ===== VENTANA: PRECIOS Y GASTOS FIJOS ===== -->
+<div class="fz-modal fz-oculto" id="modal-precios" role="dialog" aria-modal="true" aria-labelledby="precios-titulo">
+  <div class="fz-dialogo">
+    <header>
+      <div>
+        <h2 id="precios-titulo">Precios y gastos fijos</h2>
+        <p class="fz-muted" style="margin:4px 0 0;">Con esto se calculan Google, Firebase y SMS. Cámbialos cuando Google o Firebase cambien sus precios.</p>
+      </div>
+      <button type="button" class="fz-cerrar" data-cerrar="modal-precios" aria-label="Cerrar">×</button>
+    </header>
+    <div class="cuerpo">
+      <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;">
+        <div class="fz-campo"><label for="inp-tc">Tipo de cambio (pesos por dólar)</label><input id="inp-tc" type="number" step="0.01" min="0" class="fz-input" style="width:120px;"></div>
+        <button type="button" class="btn btn-outline btn-sm" id="btn-restablecer">Restablecer precios de Google y Firebase</button>
+      </div>
+      <div class="fz-tabla" style="border:1px solid #efefef;border-radius:10px;">
+        <table>
+          <thead><tr><th>Servicio</th><th>Precio (USD)</th><th>Por cada</th><th>Gratis</th><th></th></tr></thead>
+          <tbody id="precios-tbody"></tbody>
+        </table>
+      </div>
+      <h3 style="margin:6px 0 0;font-size:14px;">Uso por viaje</h3>
+      <p class="fz-muted" style="margin:0;">Las Rutas se cuentan solas con lo que pasa en cada viaje (alertas enviadas, cotizar, ir por el pasajero). Lo demás se estima con estos números.</p>
+      <div id="uso-campos" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;"></div>
+      <h3 style="margin:6px 0 0;font-size:14px;">Gastos fijos</h3>
+      <div id="fijos-lista" style="display:flex;flex-direction:column;gap:8px;"></div>
+      <button type="button" class="btn btn-outline btn-sm" id="btn-agregar-fijo" style="align-self:flex-start;">+ Agregar gasto fijo</button>
+      <p class="fz-muted" style="margin:0;">Los mensuales se reparten por día; los anuales entre 365 días; "una vez" cuenta solo el día que lo pagaste.</p>
+      <div class="cot-aviso" id="precios-aviso" style="display:none;"></div>
+    </div>
+    <footer>
+      <button type="button" class="btn btn-outline" data-cerrar="modal-precios">Cancelar</button>
+      <button type="button" class="btn btn-primary" id="btn-guardar-precios">Guardar precios</button>
+    </footer>
+  </div>
+</div>
+
+<!-- ===== VENTANA: DETALLE DE UN SERVICIO ===== -->
+<div class="fz-modal fz-oculto" id="modal-detalle" role="dialog" aria-modal="true" aria-labelledby="detalle-titulo">
+  <div class="fz-dialogo">
+    <header>
+      <div>
+        <h2 id="detalle-titulo">—</h2>
+        <p class="fz-muted" style="margin:4px 0 0;" id="detalle-sub"></p>
+      </div>
+      <button type="button" class="fz-cerrar" data-cerrar="modal-detalle" aria-label="Cerrar">×</button>
+    </header>
+    <div class="cuerpo">
+      <div class="fz-ley">
+        <span><i style="background:#2F6FB2;"></i>Real</span>
+        <span><i style="background:#c7d7ea;"></i>Proyección</span>
+        <span><i style="width:14px;height:0;border-top:2px dashed #C1443C;border-radius:0;"></i>Gratis</span>
+      </div>
+      <div class="fz-grafica">
+        <div class="fz-eje" id="det-eje"></div>
+        <div style="flex:1;min-width:0;">
+          <div class="fz-barras" id="det-barras"></div>
+          <div class="fz-x" id="det-x"></div>
+        </div>
+      </div>
+      <p class="fz-muted" style="margin:0;" id="det-nota"></p>
+      <div id="det-fuentes" style="display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
+  </div>
+</div>
+
+<script src="../js/permisos.js"></script>
+<script>
+  Permisos.protegerPagina('finanzas');
+  Permisos.aplicarVisibilidadMenu();
+  Permisos.ocultarSiNoPuede('#btn-precios, #btn-guardar-limites', 'finanzas', 'editar');
+</script>
+<script type="module" src="../js/finanzas.js"></script>
+<script>
+  const toggle  = document.getElementById('menu-toggle');
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+  toggle?.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('active'); });
+  overlay?.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('active'); });
+</script>
+</body>
+</html>

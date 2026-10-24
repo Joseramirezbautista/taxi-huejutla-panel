@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cotizador — Taxi Admin</title>
+  <link rel="stylesheet" href="../css/styles.css?v=5">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    /* ===== COTIZADOR (solo esta pagina) ===== */
+    .cot-grid { display:flex; flex-wrap:wrap; gap:22px; align-items:flex-start; }
+    .cot-izq { flex:999 1 520px; min-width:0; display:flex; flex-direction:column; gap:18px; }
+    .cot-der { flex:1 1 340px; min-width:0; display:flex; flex-direction:column; gap:18px; }
+    .cot-sec { padding:18px 22px; display:flex; flex-direction:column; gap:12px; margin-bottom:0; }
+    .cot-sec h3 { font-size:15px; font-weight:700; color:var(--dark); }
+    .cot-muted { font-size:12.5px; color:#6b6b6b; }
+    .cot-punto { display:flex; gap:8px; align-items:center; }
+    .cot-punto .dot { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
+    .cot-punto input {
+      flex:1; min-width:0; border:1px solid #e0e0e0; border-radius:8px; padding:9px 12px;
+      font-size:13px; font-family:inherit; outline:none;
+    }
+    .cot-punto input:focus { border-color:var(--green); }
+    .cot-punto.activo input { border-color:var(--green); box-shadow:0 0 0 3px rgba(59,109,17,.12); }
+    #mapa-cot { height:380px; border-radius:0 0 12px 12px; }
+    .cot-seg { display:inline-flex; border:1px solid #e0e0e0; border-radius:8px; overflow:hidden; }
+    .cot-seg button { padding:8px 14px; border:none; background:#fff; font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; color:#333; }
+    .cot-seg button + button { border-left:1px solid #e0e0e0; }
+    .cot-seg button.sel { background:var(--dark); color:#fff; }
+    .cot-fila { display:flex; justify-content:space-between; font-size:13.5px; }
+    .cot-fila span:first-child { color:#555; }
+    .cot-total { display:flex; justify-content:space-between; align-items:baseline; padding-top:10px; border-top:1px solid #f0f0f0; }
+    .cot-total b { font-size:30px; color:var(--green); }
+    .cot-select, .cot-input {
+      border:1px solid #e0e0e0; border-radius:8px; padding:9px 12px; font-size:13px; font-family:inherit; outline:none; background:#fff;
+    }
+    .cot-aviso { padding:10px 14px; border-radius:8px; font-size:13px; font-weight:600; display:none; }
+    .cot-aviso.error { background:var(--badge-suspended-bg); color:var(--badge-suspended-text); }
+    .cot-aviso.ok { background:var(--badge-active-bg); color:var(--badge-active-text); }
+    .cot-estado { font-size:11px; font-weight:600; padding:3px 10px; border-radius:20px; white-space:nowrap; }
+  </style>
+</head>
+<body>
+
+<div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <span class="logo-icon">🚕</span>
+    <span>Taxi Admin</span>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-label">Principal</div>
+    <a href="dashboard.html" data-seccion="dashboard" class="nav-item"><span class="nav-icon">📊</span> Dashboard</a>
+    <a href="taxistas.html" data-seccion="taxistas" class="nav-item"><span class="nav-icon">🧑‍✈️</span> Taxistas</a>
+    <a href="clientes.html" data-seccion="clientes" class="nav-item"><span class="nav-icon">👤</span> Clientes</a>
+    <a href="viajes.html" data-seccion="viajes" class="nav-item"><span class="nav-icon">🗺️</span> Viajes</a>
+    <div class="nav-label" style="margin-top:12px;">Gestión</div>
+    <a href="reportes.html" data-seccion="reportes" class="nav-item"><span class="nav-icon">📈</span> Reportes</a>
+    <a href="zonas.html" data-seccion="zonas" class="nav-item"><span class="nav-icon">📍</span> Zonas</a>
+    <a href="promociones.html" data-seccion="promociones" class="nav-item"><span class="nav-icon">🎁</span> Promociones</a>
+    <a href="cotizador.html" data-seccion="cotizador" class="nav-item active"><span class="nav-icon">🧮</span> Cotizador</a>
+    <a href="finanzas.html" data-seccion="finanzas" class="nav-item"><span class="nav-icon">💰</span> Finanzas</a>
+    <a href="pruebas.html" data-seccion="pruebas" class="nav-item"><span class="nav-icon">🧪</span> Pruebas</a>
+    <a href="distribucion.html" data-seccion="distribucion" class="nav-item"><span class="nav-icon">📲</span> Distribución APK</a>
+    <a href="privacidad.html" data-seccion="privacidad" class="nav-item"><span class="nav-icon">🔒</span> Privacidad</a>
+    <div class="nav-label" style="margin-top:12px;">Administrador</div>
+    <a href="basededatos.html" data-seccion="basededatos" class="nav-item"><span class="nav-icon">🗄️</span> Base de datos</a>
+    <a href="configuracion.html" data-seccion="roles" class="nav-item"><span class="nav-icon">⚙️</span> Roles</a>
+  </nav>
+  <div class="sidebar-footer">
+    <button type="button" class="btn-logout" id="btn-logout"><span>🚪</span> Cerrar sesión</button>
+  </div>
+</aside>
+
+<div class="main-content">
+  <header class="topbar">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <button type="button" class="menu-toggle" id="menu-toggle">☰</button>
+      <h1 class="topbar-title">Cotizador y viajes de prueba</h1>
+    </div>
+    <div class="topbar-right">
+      <span class="topbar-date" id="fecha-actual"></span>
+      <div class="topbar-avatar">A</div>
+    </div>
+  </header>
+
+  <main class="page-content">
+    <div class="cot-grid">
+
+      <div class="cot-izq">
+        <div class="section-card" style="margin-bottom:0;">
+          <div class="section-header">
+            <h2 class="section-title">1. Origen y destino</h2>
+            <span class="section-badge" id="badge-ruta">Sin ruta</span>
+          </div>
+          <div class="cot-sec" style="padding-bottom:12px;">
+            <div class="cot-punto activo" id="punto-origen">
+              <span class="dot" style="background:#2F8F46;"></span>
+              <input id="inp-origen" type="text" placeholder="Buscar origen o toca el mapa">
+              <button type="button" class="btn btn-outline btn-sm" data-buscar="origen">Buscar</button>
+            </div>
+            <div class="cot-punto" id="punto-destino">
+              <span class="dot" style="background:#C1443C;border-radius:3px;"></span>
+              <input id="inp-destino" type="text" placeholder="Buscar destino o toca el mapa">
+              <button type="button" class="btn btn-outline btn-sm" data-buscar="destino">Buscar</button>
+            </div>
+            <div class="cot-muted" id="ayuda-mapa">Toca el mapa para poner el <b>origen</b>.</div>
+          </div>
+          <div id="mapa-cot"></div>
+        </div>
+
+        <div class="section-card" style="margin-bottom:0;">
+          <div class="section-header">
+            <h2 class="section-title">Viajes de prueba creados</h2>
+            <span class="section-badge" id="badge-pruebas">0</span>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr><th>Creado</th><th>Ruta</th><th>Tarifa</th><th>Estado</th><th>Conductor</th><th class="th-right">Acción</th></tr>
+              </thead>
+              <tbody id="tbody-pruebas">
+                <tr class="loading-row"><td colspan="6">Cargando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="cot-der">
+        <div class="section-card cot-sec">
+          <h3>2. Servicio y promoción</h3>
+          <div class="cot-seg" id="seg-servicio">
+            <button type="button" data-servicio="x" class="sel">Económico</button>
+            <button type="button" data-servicio="prioridad">Prioridad</button>
+          </div>
+          <label class="cot-muted" for="sel-promo">Simular promoción</label>
+          <select id="sel-promo" class="cot-select"><option value="">Sin promoción</option></select>
+          <div class="cot-muted">Se calcula como si el pasajero cumpliera la promoción (primer viaje, código válido). El servidor decide lo real al pedir el viaje.</div>
+        </div>
+
+        <div class="section-card cot-sec">
+          <h3>3. Cotización</h3>
+          <div class="cot-fila"><span>Distancia</span><b id="r-km">—</b></div>
+          <div class="cot-fila"><span>Tiempo estimado</span><b id="r-min">—</b></div>
+          <div class="cot-fila"><span>Tarifa base + km + minutos</span><b id="r-calculo">—</b></div>
+          <div class="cot-fila"><span>Tarifa del servicio</span><b id="r-tarifa">—</b></div>
+          <div class="cot-fila"><span>Descuento</span><b id="r-desc" style="color:var(--badge-active-text);">—</b></div>
+          <div class="cot-total"><span>El pasajero paga</span><b id="r-paga">—</b></div>
+          <div class="cot-muted" id="r-nota"></div>
+        </div>
+
+        <div class="section-card cot-sec">
+          <h3>4. Crear viaje de prueba</h3>
+          <div class="cot-muted">Crea una solicitud real con esta ruta y tarifa: el servidor la despacha y a los conductores cercanos les llega la alerta con sonido y aparece en su Centro de viajes. Queda marcada como <b>prueba</b> y la puedes cancelar aquí.</div>
+          <label class="cot-muted" for="inp-nombre">Nombre del pasajero que verá el conductor</label>
+          <input id="inp-nombre" class="cot-input" type="text" value="Prueba (panel)" maxlength="30">
+          <label class="cot-muted" for="sel-radio">Radio de búsqueda de conductores</label>
+          <select id="sel-radio" class="cot-select">
+            <option value="">Normal (como un pasajero: 2 → 4 → 6 km)</option>
+            <option value="10">10 km</option>
+            <option value="25">25 km</option>
+            <option value="50">50 km</option>
+            <option value="100">100 km</option>
+            <option value="0">Sin límite (cualquier conductor en línea)</option>
+          </select>
+          <div class="cot-aviso" id="aviso-crear"></div>
+          <button type="button" class="btn btn-primary" id="btn-crear" disabled style="justify-content:center;padding:11px 14px;">Crear viaje de prueba</button>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script src="../js/permisos.js"></script>
+<script>
+  Permisos.protegerPagina('cotizador');
+  Permisos.aplicarVisibilidadMenu();
+  Permisos.ocultarSiNoPuede('#btn-crear', 'cotizador', 'crear');
+</script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script type="module" src="../js/cotizador.js"></script>
+<script>
+  const toggle  = document.getElementById('menu-toggle');
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+  toggle?.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('active'); });
+  overlay?.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('active'); });
+</script>
+</body>
+</html>

@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Promociones — Taxi Admin</title>
+  <link rel="stylesheet" href="../css/styles.css?v=5">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap">
+  <style>
+    /* ===== PROMOCIONES (solo esta pagina) ===== */
+    .promo-filtros { display:flex; gap:6px; flex-wrap:wrap; }
+    .promo-filtro {
+      padding:6px 12px; border-radius:20px; border:1px solid #e0e0e0; background:#fff;
+      color:#333; font-family:inherit; font-size:12.5px; font-weight:600; cursor:pointer;
+    }
+    .promo-filtro.activo { background:var(--dark); border-color:var(--dark); color:#fff; }
+    .promo-tipo {
+      display:inline-block; margin-top:3px; padding:2px 8px; border-radius:6px;
+      font-size:11.5px; font-weight:600;
+    }
+    .promo-tipo.auto { background:var(--badge-active-bg); color:var(--badge-active-text); }
+    .promo-tipo.codigo { background:var(--badge-trip-bg); color:var(--badge-trip-text); font-family:ui-monospace,Menlo,monospace; letter-spacing:.04em; }
+    .promo-barra { margin-top:5px; height:6px; border-radius:3px; background:#eee; overflow:hidden; }
+    .promo-barra > div { height:6px; background:var(--green); }
+    .promo-estado { font-size:11px; font-weight:600; padding:3px 10px; border-radius:20px; white-space:nowrap; }
+    .promo-estado.activa { background:var(--badge-active-bg); color:var(--badge-active-text); }
+    .promo-estado.programada { background:#E6EEFB; color:#1D4E9E; }
+    .promo-estado.pausada { background:var(--badge-pending-bg); color:var(--badge-pending-text); }
+    .promo-estado.agotada, .promo-estado.vencida { background:#f2f2f2; color:#555; }
+    .promo-muted { font-size:12.5px; color:#6b6b6b; }
+
+    .promo-editor-head {
+      display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; margin-bottom:18px;
+    }
+    .promo-editor-head h2 { font-size:18px; font-weight:700; color:var(--dark); }
+    .promo-editor { display:flex; flex-wrap:wrap; gap:22px; align-items:flex-start; }
+    .promo-form { flex:999 1 520px; min-width:0; display:flex; flex-direction:column; gap:18px; }
+    .promo-preview { flex:1 1 320px; min-width:0; display:flex; flex-direction:column; gap:18px; position:sticky; top:84px; }
+    .promo-sec { padding:20px 22px; display:flex; flex-direction:column; gap:14px; margin-bottom:0; }
+    .promo-sec h3 { font-size:15px; font-weight:700; color:var(--dark); }
+    .promo-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:12px; }
+    .promo-campo { display:flex; flex-direction:column; gap:5px; }
+    .promo-campo label { font-size:11px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:#6b6b6b; }
+    .promo-campo input {
+      border:1px solid #e0e0e0; border-radius:8px; padding:9px 12px; font-size:13px; font-family:inherit; outline:none; background:#fff;
+    }
+    .promo-campo input:focus { border-color:var(--green); box-shadow:0 0 0 3px rgba(59,109,17,.12); }
+    #f-codigo { font-family:ui-monospace,Menlo,monospace; font-weight:700; letter-spacing:.06em; text-transform:uppercase; }
+    .promo-opciones { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px; }
+    .promo-opcion {
+      text-align:left; padding:14px 16px; border-radius:10px; border:2px solid #e0e0e0; background:#fff;
+      font-family:inherit; cursor:pointer; display:flex; flex-direction:column; gap:4px;
+    }
+    .promo-opcion strong { font-size:14px; color:var(--dark); }
+    .promo-opcion span { font-size:12.5px; color:#555; }
+    .promo-opcion.sel { border-color:var(--green); background:#F4F9EE; }
+    .promo-segmentado { display:inline-flex; border:1px solid #e0e0e0; border-radius:8px; overflow:hidden; }
+    .promo-segmentado button {
+      padding:9px 16px; border:none; background:#fff; color:#333; font-family:inherit; font-size:13px; font-weight:600; cursor:pointer;
+    }
+    .promo-segmentado button + button { border-left:1px solid #e0e0e0; }
+    .promo-segmentado button.sel { background:var(--dark); color:#fff; }
+    .promo-check { display:flex; align-items:center; gap:8px; font-size:13.5px; cursor:pointer; }
+    .promo-check input { width:18px; height:18px; accent-color:var(--green); }
+    .promo-chips { display:flex; flex-wrap:wrap; gap:8px; }
+    .promo-chip {
+      padding:7px 14px; border-radius:20px; border:1px solid #e0e0e0; background:#fff; color:#333;
+      font-family:inherit; font-size:12.5px; font-weight:600; cursor:pointer;
+    }
+    .promo-chip.sel { border-color:var(--green); background:var(--badge-active-bg); color:var(--badge-active-text); }
+    .promo-error {
+      display:none; padding:10px 14px; border-radius:8px; background:var(--badge-suspended-bg);
+      color:var(--badge-suspended-text); font-size:13px; font-weight:600;
+    }
+    .promo-telefono {
+      background:#0A0A0A; border-radius:18px; padding:16px; display:flex; flex-direction:column; gap:12px; font-family:'Roboto', sans-serif;
+    }
+    .promo-cinta { display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:16px; background:#0F2418; border:1px solid #1F4D2E; }
+    .promo-cinta-icono { width:38px; height:38px; border-radius:12px; background:#16351F; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .promo-cinta-titulo { font-size:14.5px; font-weight:700; color:#fff; }
+    .promo-cinta-sub { font-size:12.5px; color:#9FD8B2; }
+    .promo-tarjeta-ej { display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:16px; border:2px solid #fff; background:#121212; color:#fff; }
+    .promo-fila { display:flex; justify-content:space-between; font-size:13.5px; }
+    .promo-fila span:first-child { color:#555; }
+    .promo-fila b.verde { color:var(--badge-active-text); }
+    .promo-fila b.cafe { color:var(--badge-pending-text); }
+    .promo-acciones { text-align:right; white-space:nowrap; }
+    .promo-acciones .btn + .btn { margin-left:6px; }
+  </style>
+</head>
+<body>
+
+<div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <span class="logo-icon">🚕</span>
+    <span>Taxi Admin</span>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-label">Principal</div>
+    <a href="dashboard.html" data-seccion="dashboard" class="nav-item"><span class="nav-icon">📊</span> Dashboard</a>
+    <a href="taxistas.html" data-seccion="taxistas" class="nav-item"><span class="nav-icon">🧑‍✈️</span> Taxistas</a>
+    <a href="clientes.html" data-seccion="clientes" class="nav-item"><span class="nav-icon">👤</span> Clientes</a>
+    <a href="viajes.html" data-seccion="viajes" class="nav-item"><span class="nav-icon">🗺️</span> Viajes</a>
+    <div class="nav-label" style="margin-top:12px;">Gestión</div>
+    <a href="reportes.html" data-seccion="reportes" class="nav-item"><span class="nav-icon">📈</span> Reportes</a>
+    <a href="zonas.html" data-seccion="zonas" class="nav-item"><span class="nav-icon">📍</span> Zonas</a>
+    <a href="promociones.html" data-seccion="promociones" class="nav-item active"><span class="nav-icon">🎁</span> Promociones</a>
+    <a href="cotizador.html" data-seccion="cotizador" class="nav-item"><span class="nav-icon">🧮</span> Cotizador</a>
+    <a href="finanzas.html" data-seccion="finanzas" class="nav-item"><span class="nav-icon">💰</span> Finanzas</a>
+    <a href="pruebas.html" data-seccion="pruebas" class="nav-item"><span class="nav-icon">🧪</span> Pruebas</a>
+    <a href="distribucion.html" data-seccion="distribucion" class="nav-item"><span class="nav-icon">📲</span> Distribución APK</a>
+    <a href="privacidad.html" data-seccion="privacidad" class="nav-item"><span class="nav-icon">🔒</span> Privacidad</a>
+    <div class="nav-label" style="margin-top:12px;">Administrador</div>
+    <a href="basededatos.html" data-seccion="basededatos" class="nav-item"><span class="nav-icon">🗄️</span> Base de datos</a>
+    <a href="configuracion.html" data-seccion="roles" class="nav-item"><span class="nav-icon">⚙️</span> Roles</a>
+  </nav>
+  <div class="sidebar-footer">
+    <button type="button" class="btn-logout" id="btn-logout"><span>🚪</span> Cerrar sesión</button>
+  </div>
+</aside>
+
+<div class="main-content">
+
+  <header class="topbar">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <button type="button" class="menu-toggle" id="menu-toggle">☰</button>
+      <h1 class="topbar-title">Promociones</h1>
+      <span class="live-dot"></span>
+    </div>
+    <div class="topbar-right">
+      <button type="button" class="btn btn-primary" id="btn-nueva">+ Nueva promoción</button>
+      <span class="topbar-date" id="fecha-actual"></span>
+      <div class="topbar-avatar">A</div>
+    </div>
+  </header>
+
+  <main class="page-content">
+
+    <!-- ===== LISTA ===== -->
+    <div id="vista-lista">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-card-header"><span class="stat-label">Activas ahora</span></div>
+          <div class="stat-value" id="st-activas">—</div>
+          <div class="stat-sub" id="st-activas-sub">&nbsp;</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-header"><span class="stat-label">Usos totales</span></div>
+          <div class="stat-value" id="st-usos">—</div>
+          <div class="stat-sub">viajes terminados con descuento</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-header"><span class="stat-label">Gastado</span></div>
+          <div class="stat-value" id="st-gastado">—</div>
+          <div class="promo-barra"><div id="st-gastado-barra" style="width:0%"></div></div>
+          <div class="stat-sub" id="st-gastado-sub">&nbsp;</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-header"><span class="stat-label">Crédito por abonar</span></div>
+          <div class="stat-value" id="st-credito" style="color:var(--badge-pending-text)">—</div>
+          <div class="stat-sub"><span id="st-credito-sub"></span> · <a href="suscripciones.html">ver en Suscripciones</a></div>
+        </div>
+      </div>
+
+      <div class="section-card">
+        <div class="section-header">
+          <h2 class="section-title">Todas las promociones</h2>
+          <div class="promo-filtros" id="filtros">
+            <button type="button" class="promo-filtro activo" data-filtro="todas">Todas</button>
+            <button type="button" class="promo-filtro" data-filtro="activa">Activas</button>
+            <button type="button" class="promo-filtro" data-filtro="programada">Programadas</button>
+            <button type="button" class="promo-filtro" data-filtro="pausada">Pausadas</button>
+            <button type="button" class="promo-filtro" data-filtro="agotada">Agotadas</button>
+            <button type="button" class="promo-filtro" data-filtro="vencida">Vencidas</button>
+          </div>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Promoción</th>
+                <th>Descuento</th>
+                <th>Aplica en</th>
+                <th>Vigencia</th>
+                <th>Usos</th>
+                <th style="width:170px;">Presupuesto</th>
+                <th>Estado</th>
+                <th class="th-right">Acción</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-promos">
+              <tr class="loading-row"><td colspan="8">Cargando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== EDITOR ===== -->
+    <div id="vista-editor" style="display:none;">
+      <div class="promo-editor-head">
+        <div>
+          <button type="button" class="btn btn-outline btn-sm" id="btn-volver">← Promociones</button>
+          <h2 id="editor-titulo" style="margin-top:8px;">Nueva promoción</h2>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button type="button" class="btn btn-danger" id="btn-eliminar" style="display:none;">Eliminar</button>
+          <button type="button" class="btn btn-outline" id="btn-cancelar">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="btn-guardar">Guardar promoción</button>
+        </div>
+      </div>
+
+      <div class="promo-error" id="form-error"></div>
+
+      <div class="promo-editor">
+        <div class="promo-form">
+
+          <div class="section-card promo-sec">
+            <h3>1. Tipo de promoción</h3>
+            <div class="promo-opciones">
+              <button type="button" class="promo-opcion" data-tipo="auto">
+                <strong>Automática</strong>
+                <span>Se aplica sola, sin código. Primer viaje del pasajero.</span>
+              </button>
+              <button type="button" class="promo-opcion" data-tipo="codigo">
+                <strong>Con código</strong>
+                <span>El pasajero lo escribe. Volantes, alianzas, redes.</span>
+              </button>
+            </div>
+            <div class="promo-grid">
+              <div class="promo-campo">
+                <label for="f-nombre">Nombre interno</label>
+                <input id="f-nombre" type="text" maxlength="60" placeholder="Ej. Lanzamiento Pachuca">
+              </div>
+              <div class="promo-campo" id="wrap-codigo">
+                <label for="f-codigo">Código</label>
+                <input id="f-codigo" type="text" maxlength="20" placeholder="PACHUCA20">
+              </div>
+              <div class="promo-campo" id="wrap-regla">
+                <label for="f-regla">Para quién</label>
+                <input id="f-regla" type="text" value="Pasajeros en su primer viaje" readonly style="background:#fafafa;color:#555;">
+              </div>
+            </div>
+          </div>
+
+          <div class="section-card promo-sec">
+            <h3>2. Descuento</h3>
+            <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;">
+              <div class="promo-segmentado" id="seg-modo">
+                <button type="button" data-modo="pct">Porcentaje</button>
+                <button type="button" data-modo="fijo">Pesos fijos</button>
+              </div>
+              <div class="promo-campo">
+                <label for="f-valor" id="lbl-valor">Porcentaje (%)</label>
+                <input id="f-valor" type="number" min="1" step="1" style="width:120px;">
+              </div>
+              <div class="promo-campo" id="wrap-tope">
+                <label for="f-tope">Tope ($)</label>
+                <input id="f-tope" type="number" min="0" step="1" style="width:120px;" placeholder="Sin tope">
+              </div>
+            </div>
+          </div>
+
+          <div class="section-card promo-sec">
+            <h3>3. Dónde aplica</h3>
+            <div style="display:flex;flex-wrap:wrap;gap:18px;">
+              <label class="promo-check"><input type="checkbox" id="chk-eco"> Taxi Económico</label>
+              <label class="promo-check"><input type="checkbox" id="chk-prio"> Taxi Prioridad</label>
+            </div>
+            <div class="promo-campo">
+              <label>Ciudades</label>
+              <div class="promo-chips" id="f-ciudades"></div>
+            </div>
+          </div>
+
+          <div class="section-card promo-sec">
+            <h3>4. Límites y vigencia</h3>
+            <div class="promo-grid">
+              <div class="promo-campo">
+                <label for="f-inicio">Empieza</label>
+                <input id="f-inicio" type="date">
+              </div>
+              <div class="promo-campo">
+                <label for="f-fin">Termina</label>
+                <input id="f-fin" type="date">
+              </div>
+              <div class="promo-campo">
+                <label for="f-usos">Usos máximos</label>
+                <input id="f-usos" type="number" min="0" step="1" placeholder="Sin límite">
+              </div>
+              <div class="promo-campo">
+                <label for="f-persona">Por persona</label>
+                <input id="f-persona" type="number" min="1" step="1">
+              </div>
+              <div class="promo-campo">
+                <label for="f-presupuesto">Presupuesto ($)</label>
+                <input id="f-presupuesto" type="number" min="0" step="1" placeholder="Sin límite">
+              </div>
+            </div>
+            <div class="promo-muted">Al llegar a los usos máximos o al presupuesto, la promoción se apaga sola. Si un viaje se cancela, no cuenta. Sin fecha de fin, sigue hasta que la pauses.</div>
+          </div>
+
+          <div class="section-card promo-sec">
+            <h3>5. Texto que ve el pasajero</h3>
+            <div class="promo-grid">
+              <div class="promo-campo">
+                <label for="f-titulo">Título de la cinta</label>
+                <input id="f-titulo" type="text" maxlength="60">
+              </div>
+              <div class="promo-campo">
+                <label for="f-subtitulo">Línea de abajo</label>
+                <input id="f-subtitulo" type="text" maxlength="70">
+              </div>
+            </div>
+            <label class="promo-check"><input type="checkbox" id="chk-activa"> Activa (si la apagas, queda pausada)</label>
+          </div>
+        </div>
+
+        <aside class="promo-preview">
+          <div class="section-card promo-sec">
+            <h3>Así lo ve el pasajero</h3>
+            <div class="promo-telefono">
+              <div class="promo-cinta">
+                <div class="promo-cinta-icono">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4ADE80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="13" rx="2"></rect><path d="M12 8v13M3 12h18M12 8c-2-4-6-4-6-1.5S12 8 12 8zm0 0c2-4 6-4 6-1.5S12 8 12 8z"></path></svg>
+                </div>
+                <div style="min-width:0;">
+                  <div class="promo-cinta-titulo" id="pv-titulo"></div>
+                  <div class="promo-cinta-sub" id="pv-sub"></div>
+                </div>
+              </div>
+              <div class="promo-tarjeta-ej">
+                <div style="flex-grow:1;">
+                  <div style="font-size:15.5px;font-weight:700;">Taxi Económico</div>
+                  <div style="font-size:12.5px;color:#8A8A8A;">~6 min de espera</div>
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:flex-end;">
+                  <span style="font-size:12.5px;color:#8A8A8A;text-decoration:line-through;" id="pv-orig"></span>
+                  <span style="font-size:19px;font-weight:900;color:#4ADE80;" id="pv-precio"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="section-card promo-sec">
+            <h3 id="ej-titulo">Ejemplo con un viaje de $208</h3>
+            <div class="promo-fila"><span>Descuento</span><b class="verde" id="ej-desc"></b></div>
+            <div class="promo-fila"><span>El pasajero paga</span><b id="ej-paga"></b></div>
+            <div class="promo-fila"><span>Crédito al conductor</span><b class="cafe" id="ej-credito"></b></div>
+            <div class="promo-muted" id="ej-nota"></div>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="../js/permisos.js"></script>
+<script>
+  Permisos.protegerPagina('promociones');
+  Permisos.aplicarVisibilidadMenu();
+  Permisos.ocultarSiNoPuede('#btn-nueva', 'promociones', 'crear');
+  Permisos.ocultarSiNoPuede('#btn-eliminar', 'promociones', 'eliminar');
+</script>
+
+<script type="module" src="../js/promociones.js"></script>
+
+<script>
+  const toggle  = document.getElementById('menu-toggle');
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+  toggle?.addEventListener('click', () => {
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('active');
+  });
+  overlay?.addEventListener('click', () => {
+    sidebar.classList.remove('open');
+    overlay.classList.remove('active');
+  });
+</script>
+
+</body>
+</html>

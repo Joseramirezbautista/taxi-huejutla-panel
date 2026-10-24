@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Seguimiento en tiempo real</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; overflow: hidden; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f5f5;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ── */
+    #header {
+      background: #1a1a2e;
+      color: white;
+      padding: 12px 16px 10px;
+      flex-shrink: 0;
+    }
+    #header h2 {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    #route-info {
+      margin-top: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .route-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 12px;
+      color: #ccc;
+      line-height: 1.35;
+    }
+    .route-row .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      margin-top: 4px;
+    }
+    .route-row .dot.origin { background: #3B6D11; }
+    .route-row .dot.dest   { background: #e53935; }
+    .route-row span.txt {
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 1;
+      -webkit-box-orient: vertical;
+    }
+
+    /* ── Map ── */
+    #map { flex: 1; min-height: 0; position: relative; }
+
+    #eta-badge {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 1000;
+      background: rgba(26, 26, 46, 0.92);
+      color: white;
+      padding: 8px 14px;
+      border-radius: 16px;
+      display: none;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      white-space: nowrap;
+      text-align: center;
+    }
+    /* 30% más grande que el tamaño original del badge (12px → ~16px) */
+    #eta-text { font-size: 16px; font-weight: 800; line-height: 1.2; }
+    #speed-text { font-size: 11px; font-weight: 600; color: #bbb; margin-top: 2px; }
+
+    /* ── Driver card ── */
+    #driver-card {
+      background: white;
+      flex-shrink: 0;
+      padding: 12px 16px;
+      border-top: 1px solid #eee;
+      display: none;
+    }
+    #driver-card .card-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    #driver-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: #e8f5e9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+    #driver-info { flex: 1; min-width: 0; }
+    #driver-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: #1a1a2e;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    #driver-vehicle {
+      font-size: 12px;
+      color: #666;
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    #driver-plates {
+      display: inline-block;
+      background: #1a1a2e;
+      color: white;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin-top: 4px;
+    }
+    #driver-phone-btn {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #e8f5e9;
+      text-decoration: none;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    /* ── Footer / status ── */
+    #footer {
+      background: #3B6D11;
+      color: white;
+      padding: 9px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      text-align: center;
+      flex-shrink: 0;
+      transition: background 0.3s;
+    }
+
+    /* ── Error screen ── */
+    #error-screen {
+      display: none;
+      flex: 1;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #888;
+      font-size: 15px;
+      padding: 32px;
+      text-align: center;
+      gap: 12px;
+      background: #f5f5f5;
+    }
+    #error-screen span { font-size: 48px; }
+
+    .pulse { animation: pulse 1.5s infinite; }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.5; }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="header">
+    <h2 id="cliente-nombre">🚕 Seguimiento en tiempo real</h2>
+    <div id="route-info">
+      <div class="route-row"><span class="dot origin"></span><span class="txt pulse" id="origen-txt">Cargando viaje...</span></div>
+      <div class="route-row"><span class="dot dest"></span><span class="txt" id="destino-txt"></span></div>
+    </div>
+  </div>
+
+  <div id="map">
+    <div id="eta-badge">
+      <div id="eta-text"></div>
+      <div id="speed-text"></div>
+    </div>
+  </div>
+
+  <div id="error-screen">
+    <span>🔗</span>
+    <div id="error-msg">Link inválido o viaje no encontrado.</div>
+  </div>
+
+  <!-- Driver info card -->
+  <div id="driver-card">
+    <div class="card-row">
+      <div id="driver-avatar">🧑‍✈️</div>
+      <div id="driver-info">
+        <div id="driver-name">—</div>
+        <div id="driver-vehicle">—</div>
+        <div id="driver-plates" style="display:none;">—</div>
+      </div>
+      <a id="driver-phone-btn" href="#" title="Llamar al conductor">📞</a>
+    </div>
+  </div>
+
+  <div id="footer" class="pulse">Conectando...</div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js';
+    import { getFirestore, doc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js';
+    import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/10.14.0/firebase-auth.js';
+
+    const app = initializeApp({
+      apiKey: 'AIzaSyAeAmaY0wzgzXmfq700HJiDQ_5rh6t1vDw',
+      projectId: 'taxi-huejutla',
+    });
+    const db   = getFirestore(app);
+    const auth = getAuth(app);
+
+    const params  = new URLSearchParams(window.location.search);
+    const viajeId = params.get('id');
+
+    const clienteNombreEl = document.getElementById('cliente-nombre');
+    const origenTxtEl  = document.getElementById('origen-txt');
+    const destinoTxtEl = document.getElementById('destino-txt');
+    const footerEl     = document.getElementById('footer');
+    const mapEl        = document.getElementById('map');
+    const errorEl      = document.getElementById('error-screen');
+    const errorMsgEl   = document.getElementById('error-msg');
+    const driverCardEl = document.getElementById('driver-card');
+    const driverNameEl = document.getElementById('driver-name');
+    const driverVehEl  = document.getElementById('driver-vehicle');
+    const driverPlates = document.getElementById('driver-plates');
+    const driverPhone  = document.getElementById('driver-phone-btn');
+    const etaBadgeEl   = document.getElementById('eta-badge');
+    const etaTextEl    = document.getElementById('eta-text');
+    const speedTextEl  = document.getElementById('speed-text');
+
+    let _etaMin       = null;
+    let _speedKmh     = null;
+    let _hayTaxista   = false;
+    function renderEtaBadge() {
+      // La velocidad siempre se muestra en cuanto hay un taxista asignado
+      // — en 0 si está detenido, o si todavía no llega el primer dato de
+      // GPS (nunca se deja el badge a medias esperando un valor real).
+      if (!_hayTaxista && _etaMin == null) { etaBadgeEl.style.display = 'none'; return; }
+      etaTextEl.textContent = _etaMin != null ? `🕒 ~${_etaMin} min` : '';
+      etaTextEl.style.display = _etaMin != null ? 'block' : 'none';
+      speedTextEl.textContent = `🚗 ${_speedKmh ?? 0} km/h`;
+      etaBadgeEl.style.display = 'block';
+    }
+    function updateEta(durationSec) {
+      _etaMin = Math.max(1, Math.round(durationSec / 60));
+      renderEtaBadge();
+    }
+    function updateSpeed(speedKmh) {
+      _hayTaxista = true;
+      _speedKmh = (typeof speedKmh === 'number' && speedKmh > 0) ? Math.round(speedKmh) : 0;
+      renderEtaBadge();
+    }
+
+    function showError(msg) {
+      errorMsgEl.textContent = msg;
+      errorEl.style.display   = 'flex';
+      mapEl.style.display     = 'none';
+      driverCardEl.style.display = 'none';
+      footerEl.style.display  = 'none';
+    }
+
+    if (!viajeId) {
+      showError('Link inválido. Pide al pasajero que comparta su ubicación de nuevo.');
+    } else {
+
+      // ── Map ──────────────────────────────────────────────────────
+      const map = L.map('map', { zoomControl: true, attributionControl: false })
+        .setView([20.72, -99.15], 13);
+
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 20,
+      }).addTo(map);
+
+      L.control.attribution({ position: 'bottomleft', prefix: '© OpenStreetMap © CARTO' }).addTo(map);
+
+      // ── Icons ─────────────────────────────────────────────────────
+      const originIcon = L.divIcon({
+        html: '<div style="background:#3B6D11;border:3px solid white;border-radius:50%;width:14px;height:14px;box-shadow:0 1px 4px rgba(0,0,0,0.4);"></div>',
+        iconSize: [14,14], iconAnchor: [7,7], className: ''
+      });
+      const destIcon = L.divIcon({
+        html: '<div style="background:#e53935;border:3px solid white;border-radius:50%;width:14px;height:14px;box-shadow:0 1px 4px rgba(0,0,0,0.4);"></div>',
+        iconSize: [14,14], iconAnchor: [7,7], className: ''
+      });
+      const taxiIcon = L.divIcon({
+        html: '<div style="font-size:28px;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5));transform:translate(-50%,-50%);position:absolute;top:50%;left:50%;">🚕</div>',
+        iconSize: [40,40], iconAnchor: [20,20], className: ''
+      });
+      const pasajeroIcon = L.divIcon({
+        html: '<div style="font-size:24px;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5));transform:translate(-50%,-50%);position:absolute;top:50%;left:50%;">🧑</div>',
+        iconSize: [36,36], iconAnchor: [18,18], className: ''
+      });
+      const semaforoIcon = L.divIcon({
+        html: '<div style="font-size:16px;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.6));">🚦</div>',
+        iconSize: [18,18], iconAnchor: [9,9], className: ''
+      });
+
+      // Los tiles de OSM son imágenes ya renderizadas — no se puede pedirles
+      // que dibujen los semáforos más grandes. En vez de eso, se piden los
+      // semáforos como datos (vía Overpass API, el servicio público y
+      // gratuito de OpenStreetMap para consultas) y se dibujan aparte como
+      // marcadores propios, bien visibles. Se pide una sola vez por viaje
+      // (no en cada movimiento del taxi) para no saturar ese servicio.
+      let semaforosCargados = false;
+      async function cargarSemaforos(bounds) {
+        if (semaforosCargados) return;
+        semaforosCargados = true;
+        try {
+          const sw = bounds.getSouthWest(), ne = bounds.getNorthEast();
+          const query = `[out:json][timeout:15];node["highway"="traffic_signals"](${sw.lat},${sw.lng},${ne.lat},${ne.lng});out body;`;
+          const res = await fetch('https://overpass-api.de/api/interpreter', {
+            method: 'POST',
+            body: query,
+          });
+          const json = await res.json();
+          (json.elements || []).forEach((el) => {
+            L.marker([el.lat, el.lon], { icon: semaforoIcon, interactive: false }).addTo(map);
+          });
+        } catch (_) {
+          // Servicio público gratuito: si falla o está saturado, no se
+          // reintenta — mejor un mapa sin semáforos extra que insistirle.
+        }
+      }
+
+      let taxiMarker       = null;
+      let pasajeroMarker   = null;
+      let originMarker     = null;
+      let destMarker       = null;
+      let pickupRouteLayer = null; // fase 1: taxi → pickup (naranja punteado)
+      let mainRouteLayer   = null; // fase 2: origen → destino (verde sólido)
+      let boundsSet        = false;
+      let unsubscribe      = null;
+      let unsubTaxista     = null;
+      let taxistaIdActual  = null;
+      let estadoActual     = null;
+      let mainRouteDrawn   = false;
+      let pickupRouteCoords = null; // último trazo pedido a OSRM (fase 1)
+      let mainRouteCoords   = null; // último trazo pedido a OSRM (fase 2)
+      let _taxiLat, _taxiLng; // última posición conocida del taxi
+
+      // Coordenadas guardadas del viaje
+      let _oLat, _oLng, _dLat, _dLng, _pLat, _pLng;
+
+      function haversine(lat1, lng1, lat2, lng2) {
+        const R = 6371000;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLng = (lng2 - lng1) * Math.PI / 180;
+        const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      }
+
+      // Qué tan lejos (en metros) puede llegar a estar el taxi de la ruta
+      // ya trazada antes de considerarla "vieja" y volver a pedirla — así
+      // funcionan las apps de navegación reales: no recalculan por cuántos
+      // metros avanzaste, sino por si te saliste de la línea ya dibujada
+      // (te pasaste un giro, tomaste otra calle, etc.).
+      const UMBRAL_DESVIO_M = 60;
+
+      function distanciaPuntoASegmento(px, py, ax, ay, bx, by) {
+        const dx = bx - ax, dy = by - ay;
+        const lenSq = dx * dx + dy * dy;
+        let t = lenSq > 0 ? ((px - ax) * dx + (py - ay) * dy) / lenSq : 0;
+        t = Math.max(0, Math.min(1, t));
+        const cx = ax + t * dx, cy = ay + t * dy;
+        return Math.hypot(px - cx, py - cy);
+      }
+
+      // Distancia del punto (lat,lng) a la polilínea `coords` — proyección
+      // plana local en metros, suficientemente precisa a escala de ciudad.
+      function distanciaARuta(lat, lng, coords) {
+        if (!coords || coords.length === 0) return Infinity;
+        if (coords.length === 1) return haversine(lat, lng, coords[0][0], coords[0][1]);
+        const mPerDegLat = 111320;
+        const mPerDegLng = 111320 * Math.cos(lat * Math.PI / 180);
+        const px = lng * mPerDegLng, py = lat * mPerDegLat;
+        let min = Infinity;
+        for (let i = 0; i < coords.length - 1; i++) {
+          const ax = coords[i][1] * mPerDegLng,   ay = coords[i][0] * mPerDegLat;
+          const bx = coords[i + 1][1] * mPerDegLng, by = coords[i + 1][0] * mPerDegLat;
+          const d = distanciaPuntoASegmento(px, py, ax, ay, bx, by);
+          if (d < min) min = d;
+        }
+        return min;
+      }
+
+      // Fase 1: ruta taxi → punto de recogida (naranja punteada, se
+      // recalcula sola si el taxi se sale de la línea ya trazada).
+      async function drawPickupRoute(tLat, tLng) {
+        const pLat = _pLat || _oLat;
+        const pLng = _pLng || _oLng;
+        if (!pLat || !pLng || !tLat || !tLng) return;
+        if (pickupRouteCoords && distanciaARuta(tLat, tLng, pickupRouteCoords) < UMBRAL_DESVIO_M) return;
+        try {
+          const url = `https://router.project-osrm.org/route/v1/driving/${tLng},${tLat};${pLng},${pLat}?overview=full&geometries=geojson`;
+          const res  = await fetch(url);
+          const json = await res.json();
+          if (json.routes?.[0]) {
+            const coords = json.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+            pickupRouteCoords = coords;
+            if (pickupRouteLayer) map.removeLayer(pickupRouteLayer);
+            pickupRouteLayer = L.polyline(coords, {
+              color: '#CC2222', weight: 4, opacity: 0.85, dashArray: '10 6'
+            }).addTo(map);
+            if (!boundsSet) {
+              map.fitBounds(pickupRouteLayer.getBounds(), { padding: [50,50] });
+              boundsSet = true;
+              cargarSemaforos(pickupRouteLayer.getBounds());
+            }
+            updateEta(json.routes[0].duration);
+          }
+        } catch (_) {}
+      }
+
+      // Fase 2: ruta taxi → destino (verde sólida). Va desde la posición
+      // ACTUAL del taxi (no desde el origen fijo) y se recalcula sola con
+      // el mismo criterio que la fase 1 — si toma otra calle, se nota.
+      async function drawMainRoute(tLat, tLng) {
+        const curLat = tLat ?? _taxiLat ?? _oLat;
+        const curLng = tLng ?? _taxiLng ?? _oLng;
+        if (!curLat || !curLng || !_dLat || !_dLng) return;
+        if (mainRouteCoords && distanciaARuta(curLat, curLng, mainRouteCoords) < UMBRAL_DESVIO_M) return;
+        // Limpiar ruta de fase 1 (solo aplica la primera vez; después ya
+        // está en null y esto no hace nada).
+        if (pickupRouteLayer) { map.removeLayer(pickupRouteLayer); pickupRouteLayer = null; }
+        try {
+          const url = `https://router.project-osrm.org/route/v1/driving/${curLng},${curLat};${_dLng},${_dLat}?overview=full&geometries=geojson`;
+          const res  = await fetch(url);
+          const json = await res.json();
+          if (json.routes?.[0]) {
+            const coords = json.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+            mainRouteCoords = coords;
+            if (mainRouteLayer) map.removeLayer(mainRouteLayer);
+            mainRouteLayer = L.polyline(coords, { color: '#3B6D11', weight: 5, opacity: 0.85 }).addTo(map);
+            if (!boundsSet) {
+              map.fitBounds(mainRouteLayer.getBounds(), { padding: [50,50] });
+              boundsSet = true;
+              cargarSemaforos(mainRouteLayer.getBounds());
+            }
+            updateEta(json.routes[0].duration);
+            mainRouteDrawn = true;
+          }
+        } catch (_) {}
+      }
+
+      function moverTaxi(lat, lng) {
+        if (!lat || !lng) return;
+        _taxiLat = lat; _taxiLng = lng;
+        if (!taxiMarker) {
+          taxiMarker = L.marker([lat, lng], { icon: taxiIcon, zIndexOffset: 1000 })
+            .addTo(map).bindPopup('<b>🚕 Taxi</b>');
+          if (!boundsSet) { map.setView([lat, lng], 14); boundsSet = true; }
+        } else {
+          taxiMarker.setLatLng([lat, lng]);
+        }
+        // Actualizar ruta según fase
+        if (estadoActual === 'aceptado') drawPickupRoute(lat, lng);
+        if (estadoActual === 'en_camino') drawMainRoute(lat, lng);
+      }
+
+      function setStatus(estado) {
+        const statusMap = {
+          'pendiente' : ['⏳ Buscando conductor...', '#5c6bc0'],
+          'aceptado'  : ['✅ Conductor en camino',   '#3B6D11'],
+          'en_camino' : ['🚗 Viaje en curso',          '#3B6D11'],
+          'finalizado': ['🏁 Viaje finalizado',         '#424242'],
+          'cancelado' : ['❌ Viaje cancelado',          '#c62828'],
+        };
+        const [label, color] = statusMap[estado] || [`Estado: ${estado}`, '#424242'];
+        footerEl.textContent = label;
+        footerEl.style.background = color;
+        footerEl.classList.remove('pulse');
+      }
+
+      function updateDriverCard(d) {
+        const nombre   = d.taxistaNombre   || '';
+        const marca    = d.taxistaMarca    || '';
+        const modelo   = d.taxistaModelo   || '';
+        const color    = d.taxistaColor    || '';
+        const placas   = d.taxistaPlacas   || '';
+        const telefono = d.taxistaTelefono || '';
+
+        if (!nombre && !placas) return;
+
+        driverCardEl.style.display = 'block';
+
+        if (nombre) driverNameEl.textContent = nombre;
+
+        const parts = [marca && modelo ? `${marca} ${modelo}` : (marca || modelo), color].filter(Boolean);
+        driverVehEl.textContent = parts.join(' · ') || '—';
+
+        if (placas) {
+          driverPlates.textContent = placas.toUpperCase();
+          driverPlates.style.display = 'inline-block';
+        }
+
+        if (telefono) {
+          driverPhone.href = `tel:+52${telefono.replace(/\D/g, '')}`;
+          driverPhone.style.display = 'flex';
+        }
+      }
+
+      // ── Firestore real-time listener ──────────────────────────────
+      // Quien abre este link normalmente no tiene cuenta ni sesión (es
+      // el contacto de confianza, no el pasajero) — sin iniciar sesión
+      // (aunque sea anónima), Firestore rechaza la lectura del viaje por
+      // sus reglas de seguridad y el mapa nunca carga nada.
+      signInAnonymously(auth).then(() => {
+      unsubscribe = onSnapshot(
+        doc(db, 'viajes', viajeId),
+        (snap) => {
+          if (!snap.exists()) {
+            showError('Viaje no encontrado. El link puede haber expirado.');
+            if (unsubscribe) unsubscribe();
+            return;
+          }
+
+          const d            = snap.data();
+          const taxistaId    = d.taxistaId;
+          const estado       = d.estado || 'pendiente';
+          const origen       = d.origen || 'Origen';
+          const destino      = d.destino || 'Destino';
+          const clienteNombre = d.clienteNombre || 'Pasajero';
+
+          clienteNombreEl.textContent = `🧑 ${clienteNombre}`;
+
+          // Guardar coordenadas del viaje
+          _oLat = d.clienteLat;  _oLng = d.clienteLng;
+          _dLat = d.destinoLat;  _dLng = d.destinoLng;
+          _pLat = d.pasajeroLat; _pLng = d.pasajeroLng;
+
+          // Detectar cambio de fase
+          if (estado !== estadoActual) {
+            estadoActual = estado;
+            if (estado === 'en_camino') drawMainRoute();
+          }
+
+          origenTxtEl.textContent  = origen;
+          destinoTxtEl.textContent = destino;
+          origenTxtEl.classList.remove('pulse');
+
+          // Marker de recogida (fase 1)
+          if (_oLat && _oLng && !originMarker) {
+            originMarker = L.marker([_oLat, _oLng], { icon: originIcon })
+              .addTo(map).bindPopup(`<b>Punto de recogida</b><br>${origen}`);
+            if (!boundsSet) { map.setView([_oLat, _oLng], 14); boundsSet = true; }
+          }
+
+          // Marker destino — solo en fase 2
+          if (_dLat && _dLng && !destMarker && estado === 'en_camino') {
+            destMarker = L.marker([_dLat, _dLng], { icon: destIcon })
+              .addTo(map).bindPopup(`<b>Destino</b><br>${destino}`);
+          }
+
+          // Taxi marker inicial desde viaje
+          if (d.taxistaLat && d.taxistaLng && !taxiMarker) moverTaxi(d.taxistaLat, d.taxistaLng);
+
+          // Listener directo al taxista para GPS en tiempo real
+          if (taxistaId && taxistaId !== taxistaIdActual) {
+            taxistaIdActual = taxistaId;
+            if (unsubTaxista) unsubTaxista();
+            unsubTaxista = onSnapshot(doc(db, 'taxistas', taxistaId), (tSnap) => {
+              if (!tSnap.exists()) return;
+              const td = tSnap.data();
+              moverTaxi(td.lat, td.lng);
+              updateSpeed(td.speedKmh);
+            });
+          }
+
+          updateDriverCard(d);
+          setStatus(estado);
+
+          if (estado === 'finalizado' || estado === 'cancelado') {
+            if (unsubscribe)  { unsubscribe();  unsubscribe  = null; }
+            if (unsubTaxista) { unsubTaxista(); unsubTaxista = null; }
+            setTimeout(() => {
+              document.body.innerHTML = `
+                <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;
+                  justify-content:center;background:#f5f5f5;font-family:-apple-system,sans-serif;
+                  padding:32px;text-align:center;gap:16px;">
+                  <div style="font-size:64px">${estado === 'finalizado' ? '🏁' : '❌'}</div>
+                  <div style="font-size:20px;font-weight:700;color:#1a1a2e">
+                    ${estado === 'finalizado' ? 'Viaje finalizado' : 'Viaje cancelado'}
+                  </div>
+                  <div style="font-size:14px;color:#888;max-width:280px">
+                    Este seguimiento ya no está disponible.
+                  </div>
+                </div>`;
+            }, 3000);
+          }
+        },
+        (error) => {
+          console.error(error);
+          footerEl.textContent = '⚠️ Sin conexión. Recarga la página.';
+          footerEl.style.background = '#c62828';
+          footerEl.classList.remove('pulse');
+        }
+      );
+      }).catch((err) => {
+        console.error(err);
+        showError('No se pudo abrir el seguimiento. Intenta de nuevo en un momento.');
+      });
+    }
+  </script>
+</body>
+</html>

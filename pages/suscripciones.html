@@ -1,0 +1,437 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Suscripciones — Taxi Admin</title>
+  <link rel="stylesheet" href="../css/styles.css?v=5">
+  <style>
+    /* ===== MEMBRESIAS (estado de pago, registrar pago, historial) ===== */
+    .mb-oculto { display:none !important; }
+    .mb-chips { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px; padding:14px 22px 0; }
+    .mb-chip { text-align:left; background:#fff; border:1px solid #efefef; border-radius:12px; padding:12px 14px; font-family:inherit; cursor:pointer; display:flex; flex-direction:column; gap:3px; }
+    .mb-chip.sel { border:2px solid var(--dark); padding:11px 13px; }
+    .mb-chip .l { display:inline-flex; gap:8px; align-items:center; font-size:12px; font-weight:600; color:#5f5f6e; }
+    .mb-chip .l i { width:9px; height:9px; border-radius:50%; display:inline-block; }
+    .mb-chip .n { font-size:22px; font-weight:800; color:var(--dark); }
+    .mb-chip .t { font-size:11.5px; color:#5f5f6e; }
+    .mb-barra { display:flex; flex-wrap:wrap; gap:10px; align-items:center; padding:14px 22px; }
+    .mb-barra #mb-buscar { max-width:320px; }
+    .mb-barra select { width:auto; }
+    .mb-nota { font-size:12px; color:#633806; background:#FAEEDA; border-radius:8px; padding:6px 10px; }
+    .mb-pill { font-size:11px; font-weight:700; padding:3px 10px; border-radius:10px; white-space:nowrap; display:inline-block; }
+    .mb-sub { font-size:12px; color:#6b6b6b; margin:3px 0 0; }
+    .mb-tiempo { font-weight:700; margin-bottom:6px; }
+    .mb-prog { height:6px; border-radius:3px; background:#f0f0f0; overflow:hidden; }
+    .mb-prog > div { height:100%; }
+    .mb-acciones { white-space:nowrap; text-align:right; }
+    .mb-acciones .btn + .btn { margin-left:6px; }
+    .mb-modal { position:fixed; inset:0; background:rgba(26,26,46,.55); z-index:300; display:flex; align-items:flex-start; justify-content:center; padding:40px 16px; overflow-y:auto; }
+    .mb-lateral { justify-content:flex-end; align-items:stretch; padding:0; }
+    .mb-dialogo { width:min(640px, 100%); background:#fff; border-radius:14px; box-shadow:0 20px 60px rgba(0,0,0,.3); display:flex; flex-direction:column; overflow:hidden; }
+    .mb-panel { width:min(560px, 100%); min-height:100%; background:#fff; display:flex; flex-direction:column; box-shadow:-10px 0 40px rgba(0,0,0,.2); }
+    .mb-cab { padding:20px 24px 0; display:flex; justify-content:space-between; gap:12px; align-items:flex-start; }
+    .mb-cab h2 { margin:0; font-size:18px; font-weight:700; color:var(--dark); }
+    .mb-cerrar { border:none; background:#f2f2f2; width:34px; height:34px; border-radius:8px; cursor:pointer; font-size:18px; font-family:inherit; flex-shrink:0; }
+    .mb-cuerpo { padding:18px 24px; display:flex; flex-direction:column; gap:16px; }
+    .mb-pie { padding:14px 24px; border-top:1px solid #ececec; background:#fafafa; display:flex; justify-content:flex-end; gap:10px; align-items:center; }
+    .mb-dos { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px; }
+    .mb-campo { display:flex; flex-direction:column; gap:5px; }
+    .mb-campo label, .mb-etq { font-size:12px; color:#6b6b6b; font-weight:600; }
+    .mb-periodos { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:8px; }
+    .mb-periodo { border:1px solid #e0e0e0; background:#fff; border-radius:10px; padding:10px 6px; font-family:inherit; font-weight:700; font-size:14px; cursor:pointer; color:var(--dark); }
+    .mb-periodo small { display:block; font-size:12px; font-weight:600; color:#6b6b6b; }
+    .mb-periodo.sel { border:2px solid var(--green); background:var(--light-green); color:#27500A; padding:9px 5px; }
+    .mb-queda { border:1px solid #efefef; border-radius:12px; padding:14px 16px; display:flex; flex-direction:column; gap:12px; }
+    .mb-queda-tit { font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--green); }
+    .mb-tres { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:8px; text-align:center; font-size:12.5px; }
+    .mb-tres b { display:block; font-size:13.5px; color:var(--dark); margin-top:2px; }
+    .mb-tres span { color:#6b6b6b; }
+    .mb-linea { position:relative; height:10px; border-radius:5px; background:#f0f0f0; overflow:hidden; display:flex; }
+    .mb-cobro { display:flex; flex-direction:column; gap:8px; font-size:13.5px; }
+    .mb-fila { display:flex; justify-content:space-between; gap:10px; }
+    .mb-error { padding:10px 14px; border-radius:8px; font-size:13px; font-weight:600; background:var(--badge-suspended-bg); color:var(--badge-suspended-text); }
+    .mb-hist-estado { background:var(--dark); color:#fff; border-radius:12px; padding:14px 16px; display:flex; justify-content:space-between; gap:12px; align-items:center; flex-wrap:wrap; }
+    .mb-hist-lista { padding:16px 24px; overflow-y:auto; flex:1; }
+    .mb-ev { display:grid; grid-template-columns:16px minmax(0, 1fr) auto; gap:12px; padding:10px 0; border-top:1px solid #f3f3f3; align-items:start; }
+    .mb-ev .p { width:12px; height:12px; border-radius:50%; margin-top:4px; }
+    .mb-ev .tt { font-weight:700; font-size:13.5px; color:var(--dark); }
+    .mb-ev.anulado .tt { text-decoration:line-through; color:#8a8a8a; }
+    .mb-editor { grid-column:1 / -1; background:#fafafa; border:1px solid #efefef; border-radius:10px; padding:12px; display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:10px; align-items:end; }
+  </style>
+</head>
+<body>
+
+<div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <span class="logo-icon">🚕</span>
+    <span>Taxi Admin</span>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-label">Principal</div>
+    <a href="dashboard.html" data-seccion="dashboard" class="nav-item"><span class="nav-icon">📊</span> Dashboard</a>
+    <a href="taxistas.html" data-seccion="taxistas" class="nav-item"><span class="nav-icon">🧑‍✈️</span> Taxistas</a>
+    <a href="clientes.html" data-seccion="clientes" class="nav-item"><span class="nav-icon">👤</span> Clientes</a>
+    <a href="viajes.html" data-seccion="viajes" class="nav-item"><span class="nav-icon">🗺️</span> Viajes</a>
+    <div class="nav-label" style="margin-top:12px;">Gestión</div>
+    <a href="reportes.html" data-seccion="reportes" class="nav-item"><span class="nav-icon">📈</span> Reportes</a>
+    <a href="zonas.html" data-seccion="zonas" class="nav-item"><span class="nav-icon">📍</span> Zonas</a>
+    <a href="promociones.html" data-seccion="promociones" class="nav-item"><span class="nav-icon">🎁</span> Promociones</a>
+    <a href="cotizador.html" data-seccion="cotizador" class="nav-item"><span class="nav-icon">🧮</span> Cotizador</a>
+    <a href="finanzas.html" data-seccion="finanzas" class="nav-item"><span class="nav-icon">💰</span> Finanzas</a>
+    <a href="pruebas.html" data-seccion="pruebas" class="nav-item"><span class="nav-icon">🧪</span> Pruebas</a>
+        <a href="distribucion.html" data-seccion="distribucion" class="nav-item">
+      <span class="nav-icon">📲</span> Distribución APK
+    </a>
+    <a href="privacidad.html" data-seccion="privacidad" class="nav-item"><span class="nav-icon">🔒</span> Privacidad</a>
+      <div class="nav-label" style="margin-top:12px;">Administrador</div>
+    <a href="basededatos.html" data-seccion="basededatos" class="nav-item"><span class="nav-icon">🗄️</span> Base de datos</a>
+    <a href="configuracion.html" data-seccion="roles" class="nav-item"><span class="nav-icon">⚙️</span> Roles</a>
+</nav>
+  <div class="sidebar-footer">
+    <button type="button" class="btn-logout" id="btn-logout"><span>🚪</span> Cerrar sesión</button>
+  </div>
+</aside>
+
+<div class="main-content">
+
+  <header class="topbar">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <button type="button" class="menu-toggle" id="menu-toggle">☰</button>
+      <a href="taxistas.html" id="btn-volver-taxistas" class="btn btn-outline btn-sm" style="font-size:12px;display:none;">← Volver</a>
+      <h1 class="topbar-title">Suscripciones</h1>
+      <span class="live-dot"></span>
+    </div>
+    <div class="topbar-right">
+      <span class="topbar-date" id="fecha-actual"></span>
+      <div class="topbar-avatar">A</div>
+    </div>
+  </header>
+
+  <main class="page-content">
+
+    <!-- STATS SUPERIORES -->
+    <div class="stats-grid suscrip-stats-grid">
+
+      <div class="stat-card">
+        <div class="stat-card-header">
+          <span class="stat-label">Total taxistas</span>
+          <div class="stat-icon stat-icon-lg stat-icon-driver">🧑‍✈️</div>
+        </div>
+        <div class="stat-value" id="stat-total-tax">—</div>
+        <div class="stat-sub">Registrados en la app</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-card-header">
+          <span class="stat-label">Taxistas activos</span>
+          <div class="stat-icon stat-icon-lg green">✅</div>
+        </div>
+        <div class="stat-value" id="stat-activos-tax">—</div>
+        <div class="stat-sub">Disponibles / en viaje</div>
+      </div>
+
+      <div class="stat-card stat-card-highlight">
+        <div class="stat-card-header">
+          <span class="stat-label">Costo suscripción</span>
+          <div class="stat-icon stat-icon-lg orange">💳</div>
+        </div>
+        <div class="stat-value suscrip-stat-costo" id="stat-costo-sus">—</div>
+        <div class="stat-sub" id="periodo-badge-sub">Por periodo configurado</div>
+      </div>
+
+      <div class="stat-card stat-card-green">
+        <div class="stat-card-header">
+          <span class="stat-label">Proyección mensual</span>
+          <div class="stat-icon stat-icon-lg green">📈</div>
+        </div>
+        <div class="stat-value stat-value-green" id="stat-proy-mes">—</div>
+        <div class="stat-sub">Con taxistas activos</div>
+      </div>
+
+    </div>
+
+    <!-- GRID 2 COLUMNAS: Configurar + Proyección -->
+    <div class="suscrip-grid">
+
+      <!-- CONFIGURAR SUSCRIPCIÓN -->
+      <div class="section-card">
+        <div class="section-header">
+          <h2 class="section-title">Configurar suscripción</h2>
+          <div class="cfg-btn-row">
+            <button type="button" id="btn-editar-sus" class="btn btn-outline btn-sm">Editar</button>
+            <button type="button" id="btn-guardar-sus" class="btn btn-success btn-sm" hidden>Guardar</button>
+            <button type="button" id="btn-cancel-sus"  class="btn btn-outline btn-sm" hidden>Cancelar</button>
+          </div>
+        </div>
+
+        <!-- Hero del costo actual -->
+        <div class="suscrip-costo-hero">
+          <div class="suscrip-costo-label">Costo actual por taxista</div>
+          <div class="suscrip-costo-display">
+            <span class="suscrip-costo-prefix">$</span>
+            <span id="disp-costo" class="suscrip-costo-val">150.00</span>
+            <input type="number" id="inp-costo" class="suscrip-costo-input" min="0" step="5" hidden placeholder="0">
+            <span class="suscrip-costo-mxn">MXN</span>
+          </div>
+          <div class="suscrip-periodo-row">
+            <span class="suscrip-periodo-hint">Período:</span>
+            <span id="disp-periodo" class="suscrip-periodo-badge">Mensual</span>
+            <select id="inp-periodo" class="suscrip-periodo-select" hidden>
+              <option value="mensual">Mensual</option>
+              <option value="semanal">Semanal</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="suscrip-status-wrap">
+          <div id="suscrip-status" class="tarifa-status"></div>
+        </div>
+
+        <!-- Fórmula explicada -->
+        <div class="suscrip-formula-box">
+          <div class="suscrip-formula-title">¿Cómo se calcula?</div>
+          <div class="suscrip-formula-row">
+            <span class="suscrip-formula-item">
+              <strong id="f-total-tax">0</strong> taxistas activos
+            </span>
+            <span class="suscrip-formula-op">×</span>
+            <span class="suscrip-formula-item">
+              <strong id="f-costo">$0</strong> / período
+            </span>
+            <span class="suscrip-formula-op">=</span>
+            <span class="suscrip-formula-result" id="f-resultado">$0.00 / período</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- PROYECCIÓN DE INGRESOS -->
+      <div class="section-card">
+        <div class="section-header">
+          <h2 class="section-title">Proyección de ingresos</h2>
+        </div>
+
+        <!-- Selector de cantidad -->
+        <div class="suscrip-cant-row">
+          <span class="suscrip-cant-label">¿Con cuántos taxistas calcular?</span>
+          <input type="number" id="inp-proy-cantidad" class="suscrip-cant-input" min="0" step="1" placeholder="0">
+        </div>
+        <p id="proy-info" class="suscrip-proy-info"></p>
+
+        <!-- Proyecciones semana / mes -->
+        <div class="suscrip-proy-list">
+
+          <div class="suscrip-proy-item">
+            <div class="suscrip-proy-left">
+              <div class="suscrip-proy-icon week">📅</div>
+              <div>
+                <div class="suscrip-proy-period">Por semana</div>
+                <div class="suscrip-proy-sub">Ingreso semanal estimado</div>
+              </div>
+            </div>
+            <div class="suscrip-proy-amount" id="proy-semana">—</div>
+          </div>
+
+          <div class="suscrip-proy-item">
+            <div class="suscrip-proy-left">
+              <div class="suscrip-proy-icon month">🗓</div>
+              <div>
+                <div class="suscrip-proy-period">Por mes</div>
+                <div class="suscrip-proy-sub">Ingreso mensual estimado</div>
+              </div>
+            </div>
+            <div class="suscrip-proy-amount" id="proy-mes">—</div>
+          </div>
+
+        </div>
+
+        <!-- Anual — hero destacado -->
+        <div class="suscrip-anual-hero">
+          <div class="suscrip-anual-label">Proyección anual</div>
+          <div class="suscrip-anual-amount" id="proy-anio">—</div>
+          <div class="suscrip-anual-sub">Estimado a 12 meses</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- TAXISTAS PARA COTIZACION (Finanzas los usa en "modo cotizacion") -->
+    <div class="section-card" id="cot-card">
+      <div class="section-header">
+        <h2 class="section-title">Taxistas para cotización</h2>
+        <span class="section-badge" id="cot-badge">Sin usar</span>
+      </div>
+      <p style="margin:0;padding:14px 22px 0;font-size:13px;color:#6b6b6b;">Pon cuántos taxistas quieres simular. En Finanzas podrás ver ingresos, viajes y gastos como si los tuvieras pagando su membresía, con el mismo ritmo de viajes que tienen hoy. No cambia nada real.</p>
+      <div style="padding:14px 22px;display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;">
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <label for="inp-cot-tax" style="font-size:12px;color:#6b6b6b;font-weight:600;">Taxistas para cotizar</label>
+          <input type="number" id="inp-cot-tax" class="config-input" min="0" step="1" style="width:160px;" placeholder="Ej. 200">
+        </div>
+        <label style="display:inline-flex;gap:8px;align-items:center;font-size:13.5px;padding-bottom:8px;"><input type="checkbox" id="chk-cot-activa" style="width:16px;height:16px;accent-color:var(--green);"> Usar en Finanzas</label>
+        <button type="button" class="btn btn-primary btn-sm" id="btn-cot-guardar">Guardar</button>
+        <a href="finanzas.html" class="btn btn-outline btn-sm">Ver en Finanzas</a>
+      </div>
+      <p id="cot-info" style="margin:0;padding:0 22px 18px;font-size:13px;color:#6b6b6b;"></p>
+    </div>
+
+    <!-- DESGLOSE POR ESTADO -->
+    <div class="section-card">
+      <div class="section-header">
+        <h2 class="section-title">Desglose por estado</h2>
+        <span class="section-badge" id="badge-total-tax">0 taxistas</span>
+      </div>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Estado</th>
+              <th class="th-center">Taxistas</th>
+              <th>Distribución</th>
+              <th class="th-right">Aportación mensual</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-estados">
+            <tr class="loading-row"><td colspan="4">Cargando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ESTADO DE PAGO POR TAXISTA (lo llena membresias.js) -->
+    <div class="section-card" id="mb-seccion">
+      <div class="section-header">
+        <h2 class="section-title">Estado de pago por taxista</h2>
+        <span class="section-badge" id="mb-regla">—</span>
+      </div>
+      <div class="mb-chips" id="mb-chips" role="group" aria-label="Filtrar por estado"></div>
+      <div class="mb-barra">
+        <input type="search" id="mb-buscar" class="config-input" placeholder="Buscar por nombre o teléfono..." aria-label="Buscar taxista">
+        <select id="mb-orden" class="config-input" aria-label="Ordenar">
+          <option value="urgente">Lo más urgente primero</option>
+          <option value="nombre">Por nombre</option>
+        </select>
+        <span class="mb-nota">El bloqueo en la app del conductor se activa cuando actualicemos la app; por ahora el estado se ve aquí.</span>
+      </div>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Taxista</th>
+              <th>Estado</th>
+              <th>Vence / venció</th>
+              <th style="width:210px;">Tiempo</th>
+              <th>Último pago</th>
+              <th class="th-right">Acción</th>
+            </tr>
+          </thead>
+          <tbody id="mb-tbody">
+            <tr class="loading-row"><td colspan="6">Cargando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- VENTANA: REGISTRAR / CORREGIR PAGO -->
+<div class="mb-modal mb-oculto" id="mb-modal-pago" role="dialog" aria-modal="true" aria-labelledby="mb-pago-titulo">
+  <div class="mb-dialogo">
+    <div class="mb-cab">
+      <div>
+        <h2 id="mb-pago-titulo">Registrar pago</h2>
+        <p id="mb-pago-sub" class="mb-sub"></p>
+      </div>
+      <button type="button" class="mb-cerrar" data-mb-cerrar="mb-modal-pago" aria-label="Cerrar">×</button>
+    </div>
+    <div class="mb-cuerpo">
+      <div class="mb-dos">
+        <div class="mb-campo"><label for="mb-fecha">¿Cuándo pagó?</label><input type="date" id="mb-fecha" class="config-input"></div>
+        <div class="mb-campo"><label for="mb-hora">Hora</label><input type="time" id="mb-hora" class="config-input"></div>
+      </div>
+      <div class="mb-campo">
+        <span class="mb-etq" id="mb-cuantos-etq">¿Cuántas semanas paga?</span>
+        <div class="mb-periodos" id="mb-periodos"></div>
+        <input type="number" id="mb-otro" class="config-input mb-oculto" min="1" max="52" placeholder="¿Cuántas?" aria-label="Cantidad de periodos">
+      </div>
+      <section class="mb-queda" aria-label="Así queda su membresía">
+        <div class="mb-queda-tit">Así queda su membresía</div>
+        <div class="mb-tres" id="mb-queda"></div>
+        <div class="mb-linea" id="mb-linea"></div>
+        <p class="mb-sub" id="mb-queda-nota" style="margin:0;"></p>
+      </section>
+      <section class="mb-cobro" id="mb-cobro" aria-label="Cobro"></section>
+      <div class="mb-dos">
+        <div class="mb-campo"><label for="mb-metodo">Cómo pagó</label>
+          <select id="mb-metodo" class="config-input"><option>Efectivo</option><option>Transferencia</option><option>Depósito</option></select></div>
+        <div class="mb-campo"><label for="mb-nota">Nota (opcional)</label><input type="text" id="mb-nota" class="config-input" maxlength="80" placeholder="Ej. folio de transferencia"></div>
+      </div>
+      <div class="mb-error mb-oculto" id="mb-pago-error"></div>
+    </div>
+    <div class="mb-pie">
+      <button type="button" class="btn btn-outline" data-mb-cerrar="mb-modal-pago">Cancelar</button>
+      <button type="button" class="btn btn-primary" id="mb-confirmar">Confirmar pago</button>
+    </div>
+  </div>
+</div>
+
+<!-- PANEL LATERAL: HISTORIAL DEL TAXISTA -->
+<div class="mb-modal mb-lateral mb-oculto" id="mb-modal-hist" role="dialog" aria-modal="true" aria-labelledby="mb-hist-titulo">
+  <aside class="mb-panel">
+    <div class="mb-cab" style="border-bottom:1px solid #efefef;padding-bottom:14px;flex-direction:column;align-items:stretch;gap:12px;">
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
+        <div><h2 id="mb-hist-titulo">—</h2><p class="mb-sub" id="mb-hist-sub"></p></div>
+        <button type="button" class="mb-cerrar" data-mb-cerrar="mb-modal-hist" aria-label="Cerrar">×</button>
+      </div>
+      <div class="mb-hist-estado" id="mb-hist-estado"></div>
+      <div class="mb-tres" id="mb-hist-stats"></div>
+    </div>
+    <div class="mb-hist-lista">
+      <h3 class="mb-etq" style="margin:0 0 6px;">Pagos y cambios</h3>
+      <div id="mb-hist-eventos"><p class="mb-sub">Cargando...</p></div>
+    </div>
+    <div class="mb-pie" style="justify-content:space-between;flex-wrap:wrap;">
+      <span class="mb-sub">Anular o corregir un pago recalcula su vencimiento.</span>
+      <div style="display:flex;gap:8px;align-items:center;" id="mb-cortesia-caja">
+        <label for="mb-cortesia" class="mb-sub" style="margin:0;">Días de cortesía</label>
+        <input type="number" id="mb-cortesia" class="config-input" min="1" max="30" value="1" style="width:70px;">
+        <button type="button" class="btn btn-outline btn-sm" id="mb-dar-cortesia">Dar días</button>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<script src="../js/permisos.js"></script>
+<script>
+  Permisos.protegerPagina('suscripciones');
+  Permisos.aplicarVisibilidadMenu();
+  Permisos.ocultarSiNoPuede('#btn-editar-sus, #btn-cot-guardar', 'suscripciones', 'editar');
+</script>
+
+<script type="module" src="../js/suscripciones.js"></script>
+<script type="module" src="../js/membresias.js"></script>
+
+<script>
+  const toggle  = document.getElementById('menu-toggle');
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+  toggle?.addEventListener('click', () => {
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('active');
+  });
+  overlay?.addEventListener('click', () => {
+    sidebar.classList.remove('open');
+    overlay.classList.remove('active');
+  });
+
+  if (new URLSearchParams(location.search).get('from') === 'taxistas') {
+    const btnVolver = document.getElementById('btn-volver-taxistas');
+    if (btnVolver) btnVolver.style.display = '';
+  }
+</script>
+
+</body>
+</html>

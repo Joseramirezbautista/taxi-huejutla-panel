@@ -1,0 +1,39 @@
+{
+  "hosting": {
+    "public": ".",
+    "ignore": ["firebase.json", "**/.*", "**/.*/**", "**/node_modules/**", "functions/**"],
+    "rewrites": [{ "source": "/", "destination": "/pages/login.html" }],
+    "headers": [
+      {
+        "source": "/**",
+        "headers": [
+          { "key": "X-Frame-Options", "value": "DENY" },
+          { "key": "X-Content-Type-Options", "value": "nosniff" },
+          { "key": "Referrer-Policy", "value": "strict-origin" },
+          { "key": "Permissions-Policy", "value": "geolocation=()" },
+          { "key": "Content-Security-Policy", "value": "default-src 'none'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://unpkg.com https://maps.googleapis.com https://maps.gstatic.com; style-src 'self' 'unsafe-inline' https://unpkg.com https://fonts.googleapis.com https://maps.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://tile.openstreetmap.org https://*.tile.openstreetmap.org https://firebasestorage.googleapis.com https://maps.gstatic.com https://*.gstatic.com https://maps.googleapis.com https://*.google.com; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://nominatim.openstreetmap.org https://router.project-osrm.org https://overpass-api.de https://*.cloudfunctions.net; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self';" }
+        ]
+      },
+      {
+        "source": "**/*.@(html|js|css)",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-cache, max-age=0, must-revalidate" }
+        ]
+      }
+    ]
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "disallowLegacyRuntimeConfig": true,
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ]
+    }
+  ]
+}

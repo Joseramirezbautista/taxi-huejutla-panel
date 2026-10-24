@@ -1,0 +1,179 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iniciar sesión — Taxi Admin</title>
+  <link rel="stylesheet" href="../css/styles.css?v=5">
+</head>
+<body>
+
+<div class="login-page">
+  <div class="login-card">
+
+    <div class="login-logo">
+      <span class="car-icon">🚕</span>
+      <h1>Taxi Admin</h1>
+      <p>Panel de administración</p>
+    </div>
+
+    <div class="login-error" id="login-error"></div>
+
+    <!-- PASO 1: email + contraseña -->
+    <div id="step-password">
+      <div class="form-group">
+        <label class="form-label" for="usuario">Correo electrónico</label>
+        <input class="form-input" type="email" id="usuario"
+          placeholder="correo@gmail.com" autocomplete="email">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="password">Contraseña</label>
+        <div class="login-pass-wrap">
+          <input class="form-input" type="password" id="password"
+            placeholder="••••••••" autocomplete="current-password">
+          <button type="button" id="btn-toggle-pass" class="login-pass-toggle">👁</button>
+        </div>
+      </div>
+
+      <button class="btn-login" id="btn-entrar">Entrar</button>
+    </div>
+
+    <!-- PASO 2: código TOTP -->
+    <div id="step-totp" style="display:none;">
+      <p style="color:#555;font-size:14px;margin-bottom:20px;text-align:center;">
+        Ingresa el código de 6 dígitos de tu app autenticadora (Google Authenticator, Authy, etc.)
+      </p>
+
+      <div class="form-group">
+        <label class="form-label" for="totp-code">Código de verificación</label>
+        <input class="form-input" type="text" id="totp-code"
+          placeholder="000000" maxlength="6" inputmode="numeric"
+          autocomplete="one-time-code"
+          style="letter-spacing:8px;font-size:22px;text-align:center;">
+      </div>
+
+      <button class="btn-login" id="btn-verificar">Verificar</button>
+
+      <button type="button" id="btn-volver"
+        style="display:block;width:100%;margin-top:10px;background:none;border:none;
+               color:#888;font-size:13px;cursor:pointer;padding:8px;">
+        ← Volver
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<script type="module">
+  import { Auth } from '../js/auth.js';
+
+  if (Auth.isLoggedIn()) window.location.href = 'dashboard.html';
+
+  const errorEl     = document.getElementById('login-error');
+  const stepPass    = document.getElementById('step-password');
+  const stepTotp    = document.getElementById('step-totp');
+  const btnEntrar   = document.getElementById('btn-entrar');
+  const btnVerif    = document.getElementById('btn-verificar');
+  const btnVolver   = document.getElementById('btn-volver');
+
+  let _usuario = '';
+
+  function showError(msg) {
+    errorEl.textContent   = msg;
+    errorEl.style.display = 'block';
+  }
+
+  function hideError() {
+    errorEl.style.display = 'none';
+  }
+
+  // ── PASO 1 ──
+  async function doLogin() {
+    const usuario  = document.getElementById('usuario').value.trim();
+    const password = document.getElementById('password').value;
+    if (!usuario || !password) return;
+
+    btnEntrar.disabled    = true;
+    btnEntrar.textContent = 'Verificando...';
+    hideError();
+
+    const res = await Auth.login(usuario, password);
+
+    btnEntrar.disabled    = false;
+    btnEntrar.textContent = 'Entrar';
+
+    if (res.ok && res.mfaPending) {
+      _usuario = usuario;
+      stepPass.style.display  = 'none';
+      stepTotp.style.display  = 'block';
+      document.getElementById('totp-code').focus();
+    } else if (res.ok) {
+      window.location.href = 'dashboard.html';
+    } else {
+      showError(res.msg || 'Usuario o contraseña incorrectos');
+      document.getElementById('password').value = '';
+      document.getElementById('password').focus();
+    }
+  }
+
+  // ── PASO 2 ──
+  async function doVerificarTotp() {
+    const code = document.getElementById('totp-code').value.trim();
+    if (code.length !== 6) { showError('El código debe tener 6 dígitos'); return; }
+
+    btnVerif.disabled    = true;
+    btnVerif.textContent = 'Verificando...';
+    hideError();
+
+    const res = await Auth.verificarMfa(code, _usuario);
+
+    btnVerif.disabled    = false;
+    btnVerif.textContent = 'Verificar';
+
+    if (res.ok) {
+      window.location.href = 'dashboard.html';
+    } else {
+      showError(res.msg || 'Código incorrecto');
+      document.getElementById('totp-code').value = '';
+      document.getElementById('totp-code').focus();
+    }
+  }
+
+  // ── Volver al paso 1 ──
+  btnVolver.addEventListener('click', () => {
+    stepTotp.style.display = 'none';
+    stepPass.style.display = 'block';
+    hideError();
+    document.getElementById('totp-code').value = '';
+    document.getElementById('password').value  = '';
+    document.getElementById('usuario').focus();
+  });
+
+  btnEntrar.addEventListener('click', doLogin);
+  btnVerif.addEventListener('click',  doVerificarTotp);
+
+  document.getElementById('password').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+  document.getElementById('usuario').addEventListener('keydown',  e => { if (e.key === 'Enter') document.getElementById('password').focus(); });
+  document.getElementById('totp-code').addEventListener('keydown', e => { if (e.key === 'Enter') doVerificarTotp(); });
+
+  document.getElementById('totp-code').addEventListener('input', e => {
+    e.target.value = e.target.value.replace(/\D/g, '');
+    hideError();
+  });
+
+  ['usuario', 'password'].forEach(id => {
+    document.getElementById(id).addEventListener('input', hideError);
+  });
+
+  document.getElementById('btn-toggle-pass').addEventListener('click', () => {
+    const inp  = document.getElementById('password');
+    const btn  = document.getElementById('btn-toggle-pass');
+    const show = inp.type === 'password';
+    inp.type        = show ? 'text' : 'password';
+    btn.textContent = show ? '🙈' : '👁';
+  });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,170 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pruebas de viaje — Taxi Admin</title>
+  <link rel="stylesheet" href="../css/styles.css?v=5">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    #mapa-prueba { height: 420px; border-radius: 0 0 12px 12px; }
+    .prueba-controls { display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; padding:18px 22px 14px; border-bottom:1px solid #f0f0f0; }
+    .prueba-field label { font-size:11px;font-weight:600;color:#888;display:block;margin-bottom:4px; }
+    .prueba-field select, .prueba-field input {
+      border:1px solid #e0e0e0; border-radius:8px; padding:9px 12px;
+      font-size:13px; font-family:inherit; outline:none; background:#fff;
+    }
+    .prueba-field select { min-width:180px; }
+    .prueba-field input  { width:80px; }
+    .puntos-lista { padding:14px 22px; border-bottom:1px solid #f0f0f0; min-height:44px; }
+    .punto-tag {
+      display:inline-flex; align-items:center; gap:6px;
+      background:#f0f0f0; border-radius:20px; padding:4px 10px;
+      font-size:12px; color:#444; margin:3px;
+    }
+    .punto-tag button { background:none;border:none;cursor:pointer;color:#999;font-size:14px;line-height:1; }
+    .prueba-log { padding:14px 22px; font-size:12px; color:#888; font-family:monospace; min-height:36px; }
+    .prueba-status { display:inline-block; width:10px; height:10px; border-radius:50%; background:#ccc; margin-right:6px; }
+    .prueba-status.activo { background:#3B6D11; animation: pulse 1s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+  </style>
+</head>
+<body>
+
+<div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <span class="logo-icon">🚕</span>
+    <span>Taxi Admin</span>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-label">Principal</div>
+    <a href="dashboard.html" data-seccion="dashboard" class="nav-item"><span class="nav-icon">📊</span> Dashboard</a>
+    <a href="taxistas.html" data-seccion="taxistas" class="nav-item"><span class="nav-icon">🧑‍✈️</span> Taxistas</a>
+    <a href="clientes.html" data-seccion="clientes" class="nav-item"><span class="nav-icon">👤</span> Clientes</a>
+    <a href="viajes.html" data-seccion="viajes" class="nav-item"><span class="nav-icon">🗺️</span> Viajes</a>
+    <div class="nav-label" style="margin-top:12px;">Gestión</div>
+    <a href="reportes.html" data-seccion="reportes" class="nav-item"><span class="nav-icon">📈</span> Reportes</a>
+    <a href="zonas.html" data-seccion="zonas" class="nav-item"><span class="nav-icon">📍</span> Zonas</a>
+    <a href="promociones.html" data-seccion="promociones" class="nav-item"><span class="nav-icon">🎁</span> Promociones</a>
+    <a href="cotizador.html" data-seccion="cotizador" class="nav-item"><span class="nav-icon">🧮</span> Cotizador</a>
+    <a href="finanzas.html" data-seccion="finanzas" class="nav-item"><span class="nav-icon">💰</span> Finanzas</a>
+    <a href="distribucion.html" data-seccion="distribucion" class="nav-item"><span class="nav-icon">📲</span> Distribución APK</a>
+    <a href="privacidad.html" data-seccion="privacidad" class="nav-item"><span class="nav-icon">🔒</span> Privacidad</a>
+    <a href="pruebas.html" data-seccion="pruebas" class="nav-item active"><span class="nav-icon">🧪</span> Pruebas</a>
+      <div class="nav-label" style="margin-top:12px;">Administrador</div>
+    <a href="basededatos.html" data-seccion="basededatos" class="nav-item"><span class="nav-icon">🗄️</span> Base de datos</a>
+    <a href="configuracion.html" data-seccion="roles" class="nav-item"><span class="nav-icon">⚙️</span> Roles</a>
+</nav>
+  <div class="sidebar-footer">
+    <button type="button" class="btn-logout" id="btn-logout"><span>🚪</span> Cerrar sesión</button>
+  </div>
+</aside>
+
+<div class="main-content">
+
+  <header class="topbar">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <button type="button" class="menu-toggle" id="menu-toggle">☰</button>
+      <h1 class="topbar-title">Pruebas de viaje</h1>
+    </div>
+    <div class="topbar-right">
+      <span class="topbar-date" id="fecha-actual"></span>
+      <div class="topbar-avatar">A</div>
+    </div>
+  </header>
+
+  <main class="page-content">
+
+    <!-- SIMULADOR DE RUTA -->
+    <div class="section-card" style="margin-bottom:22px;">
+      <div class="section-header">
+        <h2 class="section-title">Simulador de ruta GPS</h2>
+        <span id="sim-status-badge" style="font-size:12px;color:#888;">
+          <span class="prueba-status" id="sim-dot"></span>
+          <span id="sim-estado">Detenido</span>
+        </span>
+      </div>
+
+      <div class="prueba-controls">
+        <div class="prueba-field">
+          <label>TAXISTA</label>
+          <select id="sel-taxista"><option value="">Cargando...</option></select>
+        </div>
+        <div class="prueba-field">
+          <label>VIAJE (opcional)</label>
+          <select id="sel-viaje"><option value="">Sin viaje activo</option></select>
+        </div>
+        <div class="prueba-field">
+          <label>INTERVALO (seg)</label>
+          <input type="number" id="intervalo" value="10" min="1" max="10" step="1">
+        </div>
+        <button class="btn btn-outline" id="btn-trazar" onclick="trazarRutaReal()">🧭 Trazar ruta real</button>
+        <button class="btn btn-primary" id="btn-iniciar" onclick="iniciarSimulacion()">▶ Iniciar</button>
+        <button class="btn btn-outline" id="btn-detener" onclick="detenerSimulacion()" disabled>■ Detener</button>
+        <button class="btn btn-outline" onclick="limpiarPuntos()">🗑 Limpiar ruta</button>
+      </div>
+
+      <div class="puntos-lista" id="puntos-lista">
+        <span style="color:#bbb;font-size:12px;">Haz clic en el mapa para agregar puntos de la ruta...</span>
+      </div>
+
+      <div id="mapa-prueba"></div>
+
+      <div class="prueba-log" id="sim-log">— Listo para simular</div>
+    </div>
+
+    <!-- INFO -->
+    <div class="section-card">
+      <div class="section-header">
+        <h2 class="section-title">¿Cómo usar?</h2>
+      </div>
+      <div style="padding:16px 22px;font-size:13px;color:#555;line-height:1.8;">
+        <ol style="padding-left:20px;">
+          <li>Selecciona el taxista que quieres simular</li>
+          <li>Si hay un viaje activo, selecciónalo para que también se guarde <code>rutaRecorrida</code></li>
+          <li>Haz clic en el mapa para marcar <strong>origen</strong> y <strong>destino</strong> (el primer y último clic)</li>
+          <li>Presiona <strong>🧭 Trazar ruta real</strong> — calcula la ruta siguiendo las calles reales (Directions API) y la divide en puntos espaciados uniformemente según el intervalo</li>
+          <li>Ajusta el intervalo de segundos entre cada punto (máx. 10s)</li>
+          <li>Presiona <strong>Iniciar</strong> — el taxista se moverá en la app en tiempo real, siguiendo la calle</li>
+        </ol>
+        <p style="margin-top:12px;color:#aaa;font-size:12px;">
+          Los puntos se escriben directamente en <code>taxistas/{uid}/lat,lng</code> y opcionalmente en <code>viajes/{id}/rutaRecorrida</code>.
+        </p>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="../js/permisos.js"></script>
+<script>
+  Permisos.protegerPagina('pruebas');
+  Permisos.aplicarVisibilidadMenu();
+  Permisos.ocultarSiNoPuede('#btn-iniciar', 'pruebas', 'editar');
+</script>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-functions-compat.js"></script>
+<script>
+  firebase.initializeApp({
+    apiKey: "AIzaSyD2j_rGW0l0Boplo7bATx6ywFjAHhhcBHI",
+    authDomain: "taxi-huejutla.firebaseapp.com",
+    projectId: "taxi-huejutla",
+    storageBucket: "taxi-huejutla.firebasestorage.app",
+    messagingSenderId: "704815846259",
+    appId: "1:704815846259:web:f7da2d477cfd6157742b06"
+  });
+  firebase.auth().onAuthStateChanged(function(user) {
+    if (!user) { window.location.href = 'login.html'; return; }
+    var s = document.createElement('script');
+    s.src = '../js/pruebas.js';
+    document.body.appendChild(s);
+  });
+</script>
+</body>
+</html>

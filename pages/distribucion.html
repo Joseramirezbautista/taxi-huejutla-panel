@@ -1,0 +1,637 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Distribución APK — Taxi Admin</title>
+  <link rel="stylesheet" href="../css/styles.css?v=5">
+  <style>
+    .apk-upload-card {
+      background: #fff;
+      border-radius: 14px;
+      padding: 28px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.07);
+      margin-bottom: 24px;
+    }
+    .apk-upload-card h2 { font-size: 18px; font-weight: 700; color: #1a1a2e; margin-bottom: 4px; }
+    .apk-upload-card p  { color: #666; font-size: 13px; margin-bottom: 20px; }
+
+    .drop-zone {
+      border: 2px dashed #c5d9b0;
+      border-radius: 12px;
+      padding: 36px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: background .2s, border-color .2s;
+      background: #f9fdf5;
+    }
+    .drop-zone:hover, .drop-zone.drag-over { background: #edf7e6; border-color: #3B6D11; }
+    .drop-zone input[type="file"] { display: none; }
+    .drop-zone-icon { font-size: 36px; margin-bottom: 10px; }
+    .drop-zone-label { font-size: 14px; color: #555; }
+    .drop-zone-label span { color: #3B6D11; font-weight: 600; cursor: pointer; }
+
+    .version-row { display: flex; gap: 10px; margin-top: 14px; }
+    .version-row input {
+      flex: 1; padding: 9px 12px; border: 1px solid #ddd;
+      border-radius: 8px; font-size: 14px; outline: none;
+    }
+    .version-row input:focus { border-color: #3B6D11; }
+
+    .progress-wrap { margin-top: 16px; display: none; }
+    .progress-bar-bg { background: #e8f5e9; border-radius: 20px; height: 8px; overflow: hidden; }
+    .progress-bar-fill { height: 100%; background: #3B6D11; border-radius: 20px; width: 0%; transition: width .3s; }
+    .progress-label { font-size: 12px; color: #666; margin-top: 6px; text-align: center; }
+
+    .qr-result {
+      margin-top: 28px; display: none;
+      border-top: 1px solid #f0f0f0; padding-top: 24px;
+    }
+    .qr-result h3 { font-size: 15px; font-weight: 700; color: #1a1a2e; margin-bottom: 16px; }
+    .qr-box {
+      display: flex; justify-content: center;
+      background: #fff; border: 1px solid #e8e8e8;
+      border-radius: 12px; padding: 20px; margin-bottom: 16px;
+    }
+    .apk-meta {
+      background: #f4f6fb; border-radius: 8px;
+      padding: 12px 16px; font-size: 13px; color: #444;
+      margin-bottom: 14px; line-height: 1.8;
+    }
+    .apk-meta strong { color: #1a1a2e; }
+    .url-copy { display: flex; gap: 8px; }
+    .url-copy input {
+      flex: 1; padding: 8px 12px; border: 1px solid #ddd;
+      border-radius: 8px; font-size: 12px; color: #555;
+      background: #fafafa; outline: none;
+    }
+    .badge-version {
+      display: inline-block; background: #e8f5e9; color: #2e7d32;
+      border-radius: 20px; padding: 3px 12px; font-size: 12px; font-weight: 600;
+    }
+    .badge-actual {
+      display: inline-block; background: #3B6D11; color: #fff;
+      border-radius: 20px; padding: 2px 10px; font-size: 11px; font-weight: 600;
+      margin-left: 6px; vertical-align: middle;
+    }
+
+    /* ── Tabla de APKs almacenados ── */
+    .storage-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 16px; flex-wrap: wrap; gap: 10px;
+    }
+    .storage-header h2 { font-size: 17px; font-weight: 700; color: #1a1a2e; margin: 0; }
+    .storage-total {
+      font-size: 12px; color: #888; background: #f4f6fb;
+      border-radius: 20px; padding: 4px 14px;
+    }
+
+    .apk-table { width: 100%; border-collapse: collapse; }
+    .apk-table th {
+      text-align: left; font-size: 11px; font-weight: 600;
+      color: rgba(0,0,0,.4); text-transform: uppercase; letter-spacing: .6px;
+      padding: 0 12px 10px; border-bottom: 1px solid #f0f0f0;
+    }
+    .apk-table td {
+      padding: 13px 12px; border-bottom: 1px solid #f7f7f7;
+      font-size: 13px; color: #333; vertical-align: middle;
+    }
+    .apk-table tr:last-child td { border-bottom: none; }
+    .apk-table tr:hover td { background: #fafafa; }
+
+    .apk-filename {
+      font-weight: 600; color: #1a1a2e; word-break: break-all;
+      display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    }
+    .apk-actions { display: flex; gap: 8px; }
+    .btn-qr {
+      padding: 5px 12px; font-size: 12px; border-radius: 7px;
+      background: #f4f6fb; color: #1a1a2e; border: 1px solid #ddd;
+      cursor: pointer; white-space: nowrap; transition: background .2s;
+    }
+    .btn-qr:hover { background: #e8ecf4; }
+    .btn-del {
+      padding: 5px 12px; font-size: 12px; border-radius: 7px;
+      background: #fff0f0; color: #c0392b; border: 1px solid #f5c0c0;
+      cursor: pointer; white-space: nowrap; transition: background .2s;
+    }
+    .btn-del:hover { background: #ffe0e0; }
+    .btn-del:disabled { opacity: .5; cursor: not-allowed; }
+
+    .apk-empty {
+      text-align: center; padding: 40px 20px;
+      color: #aaa; font-size: 14px;
+    }
+    .apk-empty-icon { font-size: 36px; margin-bottom: 10px; }
+
+    /* ── Modal confirm ── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.45); z-index: 500;
+      align-items: center; justify-content: center;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal-box {
+      background: #fff; border-radius: 14px;
+      padding: 28px; max-width: 380px; width: 90%;
+      box-shadow: 0 8px 32px rgba(0,0,0,.18);
+    }
+    .modal-title { font-size: 16px; font-weight: 700; color: #1a1a2e; margin-bottom: 10px; }
+    .modal-desc  { font-size: 13px; color: #666; margin-bottom: 22px; line-height: 1.6; }
+    .modal-footer { display: flex; gap: 10px; justify-content: flex-end; }
+  </style>
+</head>
+<body>
+
+<div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <span class="logo-icon">🚕</span>
+    <span>Taxi Admin</span>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-label">Principal</div>
+    <a href="dashboard.html"      data-seccion="dashboard" class="nav-item"><span class="nav-icon">📊</span> Dashboard</a>
+    <a href="taxistas.html"       data-seccion="taxistas" class="nav-item"><span class="nav-icon">🧑‍✈️</span> Taxistas</a>
+    <a href="clientes.html"       data-seccion="clientes" class="nav-item"><span class="nav-icon">👤</span> Clientes</a>
+    <a href="viajes.html"         data-seccion="viajes" class="nav-item"><span class="nav-icon">🗺️</span> Viajes</a>
+    <div class="nav-label" style="margin-top:12px;">Gestión</div>
+    <a href="reportes.html"       data-seccion="reportes" class="nav-item"><span class="nav-icon">📈</span> Reportes</a>
+    <a href="zonas.html"          data-seccion="zonas" class="nav-item"><span class="nav-icon">📍</span> Zonas</a>
+    <a href="promociones.html" data-seccion="promociones" class="nav-item"><span class="nav-icon">🎁</span> Promociones</a>
+    <a href="cotizador.html" data-seccion="cotizador" class="nav-item"><span class="nav-icon">🧮</span> Cotizador</a>
+    <a href="finanzas.html" data-seccion="finanzas" class="nav-item"><span class="nav-icon">💰</span> Finanzas</a>
+    <a href="distribucion.html"   data-seccion="distribucion" class="nav-item active"><span class="nav-icon">📲</span> Distribución APK</a>
+    <a href="privacidad.html"     data-seccion="privacidad" class="nav-item"><span class="nav-icon">🔒</span> Privacidad</a>
+    <a href="pruebas.html"        data-seccion="pruebas" class="nav-item"><span class="nav-icon">🧪</span> Pruebas</a>
+      <div class="nav-label" style="margin-top:12px;">Administrador</div>
+    <a href="basededatos.html" data-seccion="basededatos" class="nav-item"><span class="nav-icon">🗄️</span> Base de datos</a>
+    <a href="configuracion.html"  data-seccion="roles" class="nav-item"><span class="nav-icon">⚙️</span> Roles</a>
+</nav>
+  <div class="sidebar-footer">
+    <button type="button" class="btn-logout" id="btn-logout"><span>🚪</span> Cerrar sesión</button>
+  </div>
+</aside>
+
+<div class="main-content">
+
+  <header class="topbar">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <button type="button" class="menu-toggle" id="menu-toggle">☰</button>
+      <h1 class="topbar-title">Distribución APK</h1>
+    </div>
+    <div class="topbar-right">
+      <span class="topbar-date" id="fecha-actual"></span>
+      <div class="topbar-avatar">A</div>
+    </div>
+  </header>
+
+  <main class="page-content">
+
+    <!-- ── Subir nueva versión ── -->
+    <div class="apk-upload-card">
+      <h2>📦 Subir nueva versión</h2>
+      <p>Sube el APK firmado. Cada versión se guarda con su propio nombre para que puedas conservar o eliminar versiones anteriores. El teléfono debe tener activada la opción <strong>"Instalar desde fuentes desconocidas"</strong>.</p>
+
+      <div class="drop-zone" id="drop-zone">
+        <input type="file" id="apk-input" accept=".apk">
+        <div class="drop-zone-icon">📱</div>
+        <div class="drop-zone-label">
+          Arrastra el APK aquí o <span onclick="document.getElementById('apk-input').click()">selecciónalo</span>
+        </div>
+        <div id="apk-nombre" style="margin-top:10px;font-size:13px;color:#3B6D11;font-weight:600;"></div>
+      </div>
+
+      <div class="version-row">
+        <input type="text" id="inp-version" placeholder="Versión (ej: 1.0.2)" maxlength="20">
+        <button class="btn btn-primary" id="btn-subir" disabled style="white-space:nowrap;">
+          Subir APK
+        </button>
+      </div>
+
+      <div class="progress-wrap" id="progress-wrap">
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" id="progress-fill"></div>
+        </div>
+        <div class="progress-label" id="progress-label">Subiendo... 0%</div>
+      </div>
+
+      <div class="qr-result" id="qr-result">
+        <h3>✅ APK listo para descargar</h3>
+        <div class="apk-meta" id="apk-meta"></div>
+        <div class="qr-box"><div id="qr-code"></div></div>
+        <p style="text-align:center;font-size:12px;color:#888;margin-bottom:16px;">
+          Escanea con la cámara del teléfono para descargar
+        </p>
+        <div class="url-copy">
+          <input type="text" id="apk-url-input" readonly>
+          <button class="btn btn-primary" id="btn-copiar" style="white-space:nowrap;font-size:13px;">Copiar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── APKs almacenados ── -->
+    <div class="section-card">
+      <div class="storage-header">
+        <h2>🗂️ APKs almacenados</h2>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span class="storage-total" id="storage-total">Calculando...</span>
+          <button type="button" class="btn btn-outline btn-sm" id="btn-recargar-lista">↻ Actualizar</button>
+        </div>
+      </div>
+      <div id="apk-lista-wrap">
+        <div class="apk-empty"><div class="apk-empty-icon">⏳</div>Cargando lista...</div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Modal confirmación eliminar -->
+<div class="modal-overlay" id="modal-del">
+  <div class="modal-box">
+    <div class="modal-title">🗑️ Eliminar APK</div>
+    <div class="modal-desc" id="modal-del-desc">¿Estás seguro de que deseas eliminar este archivo? Esta acción no se puede deshacer.</div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-outline" id="btn-modal-cancelar">Cancelar</button>
+      <button type="button" class="btn btn-danger"  id="btn-modal-confirmar">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal QR de versión antigua -->
+<div class="modal-overlay" id="modal-qr">
+  <div class="modal-box" style="max-width:320px;text-align:center;">
+    <div class="modal-title" id="modal-qr-titulo" style="margin-bottom:16px;"></div>
+    <div style="display:flex;justify-content:center;margin-bottom:14px;">
+      <div id="modal-qr-code"></div>
+    </div>
+    <p style="font-size:12px;color:#888;margin-bottom:18px;">Escanea para descargar esta versión</p>
+    <div class="modal-footer" style="justify-content:center;">
+      <button type="button" class="btn btn-outline" id="btn-modal-qr-cerrar">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/permisos.js"></script>
+<script>
+  Permisos.protegerPagina('distribucion');
+  Permisos.aplicarVisibilidadMenu();
+  Permisos.ocultarSiNoPuede('.apk-upload-card', 'distribucion', 'crear');
+</script>
+
+<script src="https://unpkg.com/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script type="module">
+  import { Auth } from '../js/auth.js';
+  import { app, db, auth } from '../js/app.js';
+  import {
+    getStorage, ref, uploadBytesResumable, getDownloadURL,
+    listAll, getMetadata, deleteObject
+  } from 'https://www.gstatic.com/firebasejs/10.0.0/firebase-storage.js';
+  import { doc, setDoc, getDoc, updateDoc, deleteField }
+    from 'https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore.js';
+  import { signOut }
+    from 'https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js';
+
+  Auth.protect();
+
+  const storage = getStorage(app);
+
+  // ── UI refs ──────────────────────────────────────────────────────────────
+  const dropZone     = document.getElementById('drop-zone');
+  const apkInput     = document.getElementById('apk-input');
+  const apkNombre    = document.getElementById('apk-nombre');
+  const inpVersion   = document.getElementById('inp-version');
+  const btnSubir     = document.getElementById('btn-subir');
+  const progressWrap = document.getElementById('progress-wrap');
+  const progressFill = document.getElementById('progress-fill');
+  const progressLbl  = document.getElementById('progress-label');
+  const qrResult     = document.getElementById('qr-result');
+  const apkMeta      = document.getElementById('apk-meta');
+  const apkUrlInput  = document.getElementById('apk-url-input');
+  const btnCopiar    = document.getElementById('btn-copiar');
+  const listaWrap    = document.getElementById('apk-lista-wrap');
+  const storageTxt   = document.getElementById('storage-total');
+  const modalDel     = document.getElementById('modal-del');
+  const modalDelDesc = document.getElementById('modal-del-desc');
+  const btnDelOk     = document.getElementById('btn-modal-confirmar');
+  const btnDelCancel = document.getElementById('btn-modal-cancelar');
+  const modalQr      = document.getElementById('modal-qr');
+  const modalQrTit   = document.getElementById('modal-qr-titulo');
+  const btnQrCerrar  = document.getElementById('btn-modal-qr-cerrar');
+
+  let archivoApk  = null;
+  let urlActual   = null;   // URL de la versión marcada como "actual" en Firestore
+  let nombreActual = null;  // path/nombre del archivo actual en Storage
+
+  // ── Fecha ─────────────────────────────────────────────────────────────────
+  document.getElementById('fecha-actual').textContent =
+    new Date().toLocaleDateString('es-MX', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+
+  // ── Sidebar ───────────────────────────────────────────────────────────────
+  document.getElementById('menu-toggle').addEventListener('click', () => {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('sidebar-overlay').classList.toggle('active');
+  });
+  document.getElementById('sidebar-overlay').addEventListener('click', () => {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebar-overlay').classList.remove('active');
+  });
+  document.getElementById('btn-logout').addEventListener('click', async () => {
+    await signOut(auth);
+    location.href = 'login.html';
+  });
+  document.getElementById('btn-recargar-lista').addEventListener('click', cargarLista);
+
+  // ── Cargar estado actual desde Firestore ──────────────────────────────────
+  async function cargarActual() {
+    try {
+      const snap = await getDoc(doc(db, 'configuracion', 'distribucion'));
+      if (snap.exists()) {
+        urlActual    = snap.data().apkUrl    || null;
+        nombreActual = snap.data().apkNombre || null;
+      }
+    } catch (_) {}
+  }
+
+  // ── Listar todos los APKs en Storage ─────────────────────────────────────
+  async function cargarLista() {
+    listaWrap.innerHTML = '<div class="apk-empty"><div class="apk-empty-icon">⏳</div>Cargando...</div>';
+    storageTxt.textContent = 'Calculando...';
+    try {
+      const carpeta = ref(storage, 'apks');
+      const { items } = await listAll(carpeta);
+
+      if (items.length === 0) {
+        listaWrap.innerHTML = '<div class="apk-empty"><div class="apk-empty-icon">📭</div>No hay APKs almacenados.</div>';
+        storageTxt.textContent = '0 archivos · 0 MB';
+        return;
+      }
+
+      // Obtener metadata de todos los archivos en paralelo
+      const metaList = await Promise.all(
+        items.map(async (item) => {
+          const [meta, url] = await Promise.all([getMetadata(item), getDownloadURL(item)]);
+          return { ref: item, meta, url };
+        })
+      );
+
+      // Ordenar por fecha de creación (más reciente primero)
+      metaList.sort((a, b) =>
+        new Date(b.meta.timeCreated) - new Date(a.meta.timeCreated)
+      );
+
+      // Calcular total
+      const totalBytes = metaList.reduce((s, x) => s + (x.meta.size || 0), 0);
+      const totalMB    = (totalBytes / 1024 / 1024).toFixed(1);
+      storageTxt.textContent = `${metaList.length} archivo${metaList.length !== 1 ? 's' : ''} · ${totalMB} MB`;
+
+      // Construir tabla
+      const table = document.createElement('table');
+      table.className = 'apk-table';
+      table.innerHTML = `
+        <thead>
+          <tr>
+            <th>Archivo</th>
+            <th>Tamaño</th>
+            <th>Fecha</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>`;
+
+      const tbody = document.createElement('tbody');
+
+      for (const { ref: itemRef, meta, url } of metaList) {
+        const esActual = urlActual && url === urlActual;
+        const mb       = (meta.size / 1024 / 1024).toFixed(1);
+        const fecha    = new Date(meta.timeCreated).toLocaleString('es-MX', {
+          day: '2-digit', month: 'short', year: 'numeric',
+          hour: '2-digit', minute: '2-digit'
+        });
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>
+            <div class="apk-filename">
+              📦 ${meta.name}
+              ${esActual ? '<span class="badge-actual">✓ Actual</span>' : ''}
+            </div>
+          </td>
+          <td style="color:#888;white-space:nowrap;">${mb} MB</td>
+          <td style="color:#888;white-space:nowrap;">${fecha}</td>
+          <td>
+            <div class="apk-actions">
+              <button class="btn-qr"  data-url="${url}" data-name="${meta.name}">📷 QR</button>
+              ${(window.Permisos?.puede('distribucion', 'eliminar') ?? true)
+                ? `<button class="btn-del" data-path="${itemRef.fullPath}" data-name="${meta.name}" data-actual="${esActual}">🗑️ Eliminar</button>`
+                : ''}
+            </div>
+          </td>`;
+
+        // Ver QR
+        tr.querySelector('.btn-qr').addEventListener('click', (e) => {
+          const { url: u, name } = e.currentTarget.dataset;
+          abrirModalQr(u, name);
+        });
+
+        // Eliminar
+        tr.querySelector('.btn-del')?.addEventListener('click', (e) => {
+          const { path, name, actual } = e.currentTarget.dataset;
+          abrirModalEliminar(path, name, actual === 'true', e.currentTarget);
+        });
+
+        tbody.appendChild(tr);
+      }
+
+      table.appendChild(tbody);
+      listaWrap.innerHTML = '';
+      listaWrap.appendChild(table);
+    } catch (err) {
+      listaWrap.innerHTML = `<div class="apk-empty"><div class="apk-empty-icon">⚠️</div>Error al cargar: ${err.message}</div>`;
+    }
+  }
+
+  // ── Modal eliminar ────────────────────────────────────────────────────────
+  let _pendingDelete = null;
+
+  function abrirModalEliminar(path, name, esActual, btnEl) {
+    modalDelDesc.innerHTML = esActual
+      ? `<strong style="color:#c0392b;">⚠️ Este es el APK actual.</strong> Si lo eliminas, el QR y el enlace dejarán de funcionar para los testers.<br><br>¿Deseas eliminarlo de todas formas?`
+      : `¿Eliminar <strong>${name}</strong>? Esta acción no se puede deshacer.`;
+    _pendingDelete = { path, esActual, btnEl };
+    modalDel.classList.add('show');
+  }
+
+  btnDelCancel.addEventListener('click', () => {
+    modalDel.classList.remove('show');
+    _pendingDelete = null;
+  });
+
+  btnDelOk.addEventListener('click', async () => {
+    if (!_pendingDelete) return;
+    const { path, esActual, btnEl } = _pendingDelete;
+    btnDelOk.disabled = true;
+    btnDelOk.textContent = 'Eliminando...';
+    try {
+      await deleteObject(ref(storage, path));
+
+      // Si era el actual, limpiar Firestore
+      if (esActual) {
+        await updateDoc(doc(db, 'configuracion', 'distribucion'), {
+          apkUrl: deleteField(),
+          apkNombre: deleteField(),
+        });
+        urlActual    = null;
+        nombreActual = null;
+        qrResult.style.display = 'none';
+      }
+      modalDel.classList.remove('show');
+      _pendingDelete = null;
+      cargarLista();
+    } catch (err) {
+      alert('Error al eliminar: ' + err.message);
+    } finally {
+      btnDelOk.disabled = false;
+      btnDelOk.textContent = 'Eliminar';
+    }
+  });
+
+  // ── Modal QR de versión antigua ───────────────────────────────────────────
+  let _qrModalInstance = null;
+
+  function abrirModalQr(url, name) {
+    modalQrTit.textContent = name;
+    const el = document.getElementById('modal-qr-code');
+    el.innerHTML = '';
+    _qrModalInstance = new QRCode(el, {
+      text: url, width: 200, height: 200,
+      colorDark: '#1a1a2e', colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M,
+    });
+    modalQr.classList.add('show');
+  }
+
+  btnQrCerrar.addEventListener('click', () => {
+    modalQr.classList.remove('show');
+  });
+
+  // Cerrar modales con clic fuera
+  [modalDel, modalQr].forEach(m => {
+    m.addEventListener('click', (e) => { if (e.target === m) m.classList.remove('show'); });
+  });
+
+  // ── Drag & drop ───────────────────────────────────────────────────────────
+  dropZone.addEventListener('dragover',  (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', ()  => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) seleccionarArchivo(file);
+  });
+  apkInput.addEventListener('change', () => {
+    if (apkInput.files[0]) seleccionarArchivo(apkInput.files[0]);
+  });
+
+  function seleccionarArchivo(file) {
+    if (!file.name.endsWith('.apk')) { alert('Solo se aceptan archivos .apk'); return; }
+    archivoApk = file;
+    const mb = (file.size / 1024 / 1024).toFixed(1);
+    apkNombre.textContent = `${file.name} (${mb} MB)`;
+    actualizarBoton();
+  }
+
+  inpVersion.addEventListener('input', actualizarBoton);
+  function actualizarBoton() {
+    btnSubir.disabled = !(archivoApk && inpVersion.value.trim());
+  }
+
+  // ── Subir APK (nombre versionado para no sobreescribir) ───────────────────
+  btnSubir.addEventListener('click', async () => {
+    if (!archivoApk) return;
+    const version = inpVersion.value.trim();
+
+    // Nombre único: taxi-v1.0.2-20240615-143022.apk
+    const ts = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
+    const nombreArchivo = `taxi-v${version}-${ts}.apk`;
+
+    btnSubir.disabled = true;
+    qrResult.style.display = 'none';
+    progressWrap.style.display = 'block';
+    progressFill.style.width = '0%';
+
+    const storageRef = ref(storage, `apks/${nombreArchivo}`);
+    const task = uploadBytesResumable(storageRef, archivoApk, {
+      contentType: 'application/vnd.android.package-archive',
+    });
+
+    task.on('state_changed',
+      (snap) => {
+        const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
+        progressFill.style.width = `${pct}%`;
+        progressLbl.textContent = `Subiendo... ${pct}%`;
+      },
+      (err) => {
+        progressWrap.style.display = 'none';
+        btnSubir.disabled = false;
+        alert('Error al subir: ' + err.message);
+      },
+      async () => {
+        progressLbl.textContent = 'Obteniendo enlace...';
+        const url = await getDownloadURL(storageRef);
+        urlActual    = url;
+        nombreActual = nombreArchivo;
+
+        await setDoc(doc(db, 'configuracion', 'distribucion'), {
+          apkUrl:    url,
+          apkNombre: nombreArchivo,
+          version,
+          subidoEl:  new Date().toISOString(),
+        });
+
+        progressWrap.style.display = 'none';
+        mostrarResultado(url, version, nombreArchivo);
+        cargarLista();
+        btnSubir.disabled = false;
+      }
+    );
+  });
+
+  // ── Mostrar QR tras subir ─────────────────────────────────────────────────
+  function mostrarResultado(url, version, nombre) {
+    const mb = archivoApk ? (archivoApk.size / 1024 / 1024).toFixed(1) + ' MB' : '';
+    apkMeta.innerHTML =
+      `<strong>Versión:</strong> <span class="badge-version">v${version}</span><br>
+       <strong>Archivo:</strong> ${nombre}<br>
+       ${mb ? `<strong>Tamaño:</strong> ${mb}<br>` : ''}
+       <strong>Subido:</strong> ${new Date().toLocaleString('es-MX')}`;
+
+    apkUrlInput.value = url;
+
+    const qrEl = document.getElementById('qr-code');
+    qrEl.innerHTML = '';
+    new QRCode(qrEl, {
+      text: url, width: 220, height: 220,
+      colorDark: '#1a1a2e', colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M,
+    });
+
+    qrResult.style.display = 'block';
+    qrResult.scrollIntoView({ behavior: 'smooth' });
+  }
+
+  // ── Copiar URL ─────────────────────────────────────────────────────────────
+  btnCopiar.addEventListener('click', () => {
+    navigator.clipboard.writeText(apkUrlInput.value).then(() => {
+      btnCopiar.textContent = '✓ Copiado';
+      setTimeout(() => btnCopiar.textContent = 'Copiar', 2000);
+    });
+  });
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+  await cargarActual();
+  cargarLista();
+</script>
+</body>
+</html>

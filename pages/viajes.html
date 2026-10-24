@@ -1,0 +1,320 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Viajes — Taxi Admin</title>
+  <link rel="stylesheet" href="../css/styles.css?v=5">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+</head>
+<body>
+
+<div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <span class="logo-icon">🚕</span>
+    <span>Taxi Admin</span>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="nav-label">Principal</div>
+    <a href="dashboard.html" data-seccion="dashboard" class="nav-item">
+      <span class="nav-icon">📊</span> Dashboard
+    </a>
+    <a href="taxistas.html" data-seccion="taxistas" class="nav-item">
+      <span class="nav-icon">🧑‍✈️</span> Taxistas
+    </a>
+    <a href="clientes.html" data-seccion="clientes" class="nav-item">
+      <span class="nav-icon">👤</span> Clientes
+    </a>
+    <a href="viajes.html" data-seccion="viajes" class="nav-item active">
+      <span class="nav-icon">🗺️</span> Viajes
+    </a>
+
+    <div class="nav-label" style="margin-top:12px;">Gestión</div>
+    <a href="reportes.html" data-seccion="reportes" class="nav-item">
+      <span class="nav-icon">📈</span> Reportes
+    </a>
+    <a href="zonas.html" data-seccion="zonas" class="nav-item">
+      <span class="nav-icon">📍</span> Zonas
+    </a>
+    <a href="promociones.html" data-seccion="promociones" class="nav-item"><span class="nav-icon">🎁</span> Promociones</a>
+    <a href="cotizador.html" data-seccion="cotizador" class="nav-item"><span class="nav-icon">🧮</span> Cotizador</a>
+    <a href="finanzas.html" data-seccion="finanzas" class="nav-item"><span class="nav-icon">💰</span> Finanzas</a>
+    <a href="distribucion.html" data-seccion="distribucion" class="nav-item">
+      <span class="nav-icon">📲</span> Distribución APK
+    </a>
+    <a href="privacidad.html" data-seccion="privacidad" class="nav-item">
+      <span class="nav-icon">🔒</span> Privacidad
+    </a>
+    <a href="pruebas.html" data-seccion="pruebas" class="nav-item">
+      <span class="nav-icon">🧪</span> Pruebas
+    </a>
+      <div class="nav-label" style="margin-top:12px;">Administrador</div>
+    <a href="basededatos.html" data-seccion="basededatos" class="nav-item"><span class="nav-icon">🗄️</span> Base de datos</a>
+    <a href="configuracion.html" data-seccion="roles" class="nav-item">
+      <span class="nav-icon">⚙️</span> Roles
+    </a>
+</nav>
+
+  <div class="sidebar-footer">
+    <button class="btn-logout" id="btn-logout">
+      <span>🚪</span> Cerrar sesión
+    </button>
+  </div>
+</aside>
+
+<!-- CONTENIDO PRINCIPAL -->
+<div class="main-content">
+
+  <header class="topbar">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <button class="menu-toggle" id="menu-toggle">☰</button>
+      <h1 class="topbar-title">Viajes</h1>
+    </div>
+    <div class="topbar-right">
+      <span class="topbar-date" id="fecha-actual"></span>
+      <div class="topbar-avatar">A</div>
+    </div>
+  </header>
+
+  <main class="page-content">
+
+    <div class="section-card">
+
+      <!-- FILTROS ESTADO -->
+      <div class="filters-bar">
+        <button class="filtro-btn filter-btn" data-filtro="todos">Todos</button>
+        <button class="filtro-btn filter-btn active" data-filtro="hoy">Hoy</button>
+        <button class="filtro-btn filter-btn" data-filtro="pendientes">Pendientes</button>
+        <button class="filtro-btn filter-btn" data-filtro="en_curso">En curso</button>
+        <button class="filtro-btn filter-btn" data-filtro="finalizados">Finalizados</button>
+      </div>
+
+      <!-- FILTRO POR FECHAS -->
+      <div class="filters-bar">
+        <label class="date-filter-label">
+          Desde
+          <input type="date" id="fecha-desde" class="date-filter-input">
+        </label>
+        <label class="date-filter-label">
+          Hasta
+          <input type="date" id="fecha-hasta" class="date-filter-input">
+        </label>
+        <button id="btn-aplicar-fecha" class="btn btn-outline btn-sm">Aplicar</button>
+        <button id="btn-limpiar-fecha" class="btn btn-outline btn-sm">Limpiar</button>
+      </div>
+
+      <!-- LIMPIEZA DE PENDIENTES ABANDONADOS -->
+      <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
+        <button id="btn-limpiar-pendientes" class="btn btn-outline btn-sm" style="border-color:#e74c3c;color:#e74c3c;display:flex;align-items:center;gap:6px;">
+          🗑️ Limpiar viajes pendientes abandonados
+        </button>
+      </div>
+
+      <!-- CONTADOR + TOTAL -->
+      <div class="viajes-summary">
+        <span class="viajes-summary-count">
+          <span id="count-viajes">0</span> viajes encontrados
+        </span>
+        <span class="viajes-total-box">
+          Total: <span id="total-ingresos">$0.00</span>
+        </span>
+      </div>
+
+      <!-- TABLA -->
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Origen</th>
+              <th>Destino</th>
+              <th>Tarifa</th>
+              <th>Taxista</th>
+              <th>Cliente</th>
+              <th>Estado</th>
+              <th>Fecha y hora</th>
+              <th>Calificación</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="viajes-tbody">
+            <tr class="loading-row"><td colspan="9">Cargando viajes...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div id="viajes-pager" style="display:flex;align-items:center;justify-content:center;gap:12px;padding:16px 0 4px;"></div>
+
+    </div>
+
+  </main>
+</div>
+
+<!-- MODAL EDITAR ESTADO -->
+<div id="modal-estado" class="vest-overlay">
+  <div class="vest-box">
+    <div class="vest-header">
+      <h3 class="vest-title">Cambiar estado del viaje</h3>
+      <button class="vest-close" onclick="cerrarModalEstado()">✕</button>
+    </div>
+    <div class="vest-body">
+      <div class="vest-info" id="vest-info"></div>
+      <label class="vest-label">Estado actual</label>
+      <select id="vest-select" class="vest-select" aria-label="Estado del viaje">
+        <option value="pendiente">Pendiente</option>
+        <option value="aceptado">En curso (aceptado)</option>
+        <option value="en_camino">En camino</option>
+        <option value="finalizado">Finalizado</option>
+        <option value="cancelado">Cancelado</option>
+      </select>
+    </div>
+    <div class="vest-footer">
+      <button class="btn btn-outline" onclick="cerrarModalEstado()">Cancelar</button>
+      <button class="btn btn-primary" id="vest-guardar" onclick="guardarEstado()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL LIMPIAR PENDIENTES -->
+<div id="modal-limpiar" class="vest-overlay">
+  <div class="vest-box">
+    <div class="vest-header">
+      <h3 class="vest-title">Limpiar viajes pendientes</h3>
+      <button class="vest-close" onclick="cerrarModalLimpiar()">✕</button>
+    </div>
+    <div class="vest-body">
+      <p style="color:var(--text-secondary);margin-bottom:16px;">Esto eliminará todos los viajes en estado <strong style="color:#e74c3c;">pendiente</strong> que tienen más de <strong>15 minutos</strong> sin ser aceptados.</p>
+      <p style="color:var(--text-secondary);">Los viajes <strong>finalizados, cancelados y en curso</strong> no se verán afectados.</p>
+      <div id="limpiar-resultado" style="display:none;margin-top:14px;padding:10px 14px;border-radius:8px;font-size:14px;"></div>
+    </div>
+    <div class="vest-footer">
+      <button class="btn btn-outline" onclick="cerrarModalLimpiar()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-confirmar-limpiar" onclick="limpiarPendientes()" style="background:#e74c3c;border-color:#e74c3c;">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL MAPA RUTA -->
+<div id="modal-mapa" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1000;align-items:center;justify-content:center;padding:20px;">
+  <div class="mapa-modal-box">
+    <div class="mapa-modal-header">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span class="mapa-modal-title">Ruta del viaje</span>
+        <span id="mapa-live-badge" class="mapa-live-badge" style="display:none;">
+          <span class="mapa-live-dot"></span> En vivo
+        </span>
+      </div>
+      <button onclick="cerrarMapa()" class="mapa-close-btn">✕</button>
+    </div>
+    <div id="leaflet-map" class="mapa-leaflet"></div>
+    <div class="mapa-leyenda">
+      <span class="mapa-leyenda-item">
+        <span class="mapa-leyenda-line mapa-leyenda-line-pickup"></span>
+        Taxi → Pasajero
+      </span>
+      <span class="mapa-leyenda-item">
+        <span class="mapa-leyenda-line mapa-leyenda-line-route"></span>
+        <span id="leyenda-ruta-label">Ruta del viaje</span>
+      </span>
+      <span class="mapa-leyenda-item" id="mapa-tiempo-viaje" style="margin-left:auto;gap:14px;color:#555;font-size:12px;">
+        <span>🕐 Inicio: <strong id="mapa-hora-inicio">—</strong></span>
+        <span>🏁 Fin: <strong id="mapa-hora-fin">—</strong></span>
+      </span>
+    </div>
+    <div class="mapa-info-bar">
+      <div class="mapa-info-item">
+        <span class="mapa-dot mapa-dot-orig"></span>
+        <span class="mapa-info-label">Origen</span>
+        <span id="mapa-origen" class="mapa-info-val">—</span>
+      </div>
+      <div class="mapa-info-item">
+        <span class="mapa-dot mapa-dot-dest"></span>
+        <span class="mapa-info-label">Destino</span>
+        <span id="mapa-destino" class="mapa-info-val">—</span>
+      </div>
+      <div class="mapa-info-item">
+        <span class="mapa-info-label">Taxista</span>
+        <span id="mapa-taxista" class="mapa-info-val">—</span>
+      </div>
+      <div class="mapa-info-item">
+        <span class="mapa-info-label">Teléfono</span>
+        <span id="mapa-telefono" class="mapa-info-val">—</span>
+      </div>
+      <div class="mapa-info-item">
+        <span class="mapa-info-label">Placas</span>
+        <span id="mapa-placas" class="mapa-info-val">—</span>
+      </div>
+      <div class="mapa-info-item">
+        <span class="mapa-info-label">Tarifa</span>
+        <span id="mapa-tarifa" class="mapa-info-val mapa-tarifa-val">—</span>
+      </div>
+      <div class="mapa-info-item">
+        <span class="mapa-info-label">Calificación</span>
+        <span id="mapa-calificacion" class="mapa-info-val">—</span>
+      </div>
+      <div class="mapa-info-item" style="flex:1 1 100%;">
+        <span class="mapa-info-label">Comentario del cliente</span>
+        <span id="mapa-comentario" class="mapa-info-val">—</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="../js/permisos.js"></script>
+<script>
+  Permisos.protegerPagina('viajes');
+  Permisos.aplicarVisibilidadMenu();
+  Permisos.ocultarSiNoPuede('#btn-limpiar-pendientes', 'viajes', 'eliminar');
+</script>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script>
+  firebase.initializeApp({
+    apiKey: "AIzaSyD2j_rGW0l0Boplo7bATx6ywFjAHhhcBHI",
+    authDomain: "taxi-huejutla.firebaseapp.com",
+    projectId: "taxi-huejutla",
+    storageBucket: "taxi-huejutla.firebasestorage.app",
+    messagingSenderId: "704815846259",
+    appId: "1:704815846259:web:f7da2d477cfd6157742b06"
+  });
+  firebase.auth().onAuthStateChanged(function(user) {
+    if (!user) { window.location.href = 'login.html'; return; }
+    var s = document.createElement('script');
+    s.src = '../js/viajes.js?v=4';
+    document.body.appendChild(s);
+  });
+</script>
+
+<!-- MENÚ MÓVIL -->
+<script>
+  const toggle = document.getElementById('menu-toggle');
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+
+  toggle?.addEventListener('click', () => {
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('active');
+  });
+
+  overlay?.addEventListener('click', () => {
+    sidebar.classList.remove('open');
+    overlay.classList.remove('active');
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') cerrarMapa();
+  });
+
+  document.getElementById('modal-mapa')?.addEventListener('click', e => {
+    if (e.target.id === 'modal-mapa') cerrarMapa();
+  });
+</script>
+
+</body>
+</html>
