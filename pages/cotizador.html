@@ -14,7 +14,13 @@
     .cot-sec { padding:18px 22px; display:flex; flex-direction:column; gap:12px; margin-bottom:0; }
     .cot-sec h3 { font-size:15px; font-weight:700; color:var(--dark); }
     .cot-muted { font-size:12.5px; color:#6b6b6b; }
-    .cot-punto { display:flex; gap:8px; align-items:center; }
+    .cot-punto { display:flex; gap:8px; align-items:center; position:relative; }
+    .cot-sug { position:absolute; left:20px; right:80px; top:calc(100% + 4px); z-index:1000; background:#fff; border:1px solid #e0e0e0; border-radius:10px; box-shadow:0 10px 30px rgba(0,0,0,.12); overflow:hidden; display:none; }
+    .cot-sug button { display:block; width:100%; text-align:left; border:none; background:#fff; padding:9px 12px; font-family:inherit; cursor:pointer; border-top:1px solid #f3f3f3; }
+    .cot-sug button:first-child { border-top:none; }
+    .cot-sug button.activa, .cot-sug button:hover { background:#f4f8ef; }
+    .cot-sug b { display:block; font-size:13px; color:var(--dark); }
+    .cot-sug span { display:block; font-size:12px; color:#6b6b6b; }
     .cot-punto .dot { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
     .cot-punto input {
       flex:1; min-width:0; border:1px solid #e0e0e0; border-radius:8px; padding:9px 12px;
@@ -92,7 +98,10 @@
         <div class="section-card" style="margin-bottom:0;">
           <div class="section-header">
             <h2 class="section-title">1. Origen y destino</h2>
-            <span class="section-badge" id="badge-ruta">Sin ruta</span>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <span class="section-badge" id="badge-ruta">Sin ruta</span>
+              <button type="button" class="btn btn-outline btn-sm" id="btn-limpiar">Limpiar</button>
+            </div>
           </div>
           <div class="cot-sec" style="padding-bottom:12px;">
             <div class="cot-punto activo" id="punto-origen">
@@ -108,6 +117,22 @@
             <div class="cot-muted" id="ayuda-mapa">Toca el mapa para poner el <b>origen</b>.</div>
           </div>
           <div id="mapa-cot"></div>
+        </div>
+
+        <div class="section-card" style="margin-bottom:0;">
+          <div class="section-header">
+            <h2 class="section-title">Conductores en línea</h2>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <span class="section-badge" id="badge-conductores">0</span>
+              <button type="button" class="btn btn-outline btn-sm" id="btn-actualizar-cond">Actualizar</button>
+            </div>
+          </div>
+          <div class="cot-sec" style="padding-top:12px;">
+            <div class="cot-muted">Pon el origen junto a un conductor para que la prueba se parezca a un viaje real: el tramo hacia el pasajero queda corto.</div>
+            <div id="lista-conductores" style="display:flex;flex-direction:column;gap:8px;">
+              <div class="cot-muted">Cargando...</div>
+            </div>
+          </div>
         </div>
 
         <div class="section-card" style="margin-bottom:0;">
