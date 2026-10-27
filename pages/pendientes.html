@@ -37,6 +37,7 @@
       <span class="nav-icon">📍</span> Zonas
     </a>
     <a href="promociones.html" data-seccion="promociones" class="nav-item"><span class="nav-icon">🎁</span> Promociones</a>
+    <a href="puntos.html" data-seccion="puntos" class="nav-item"><span class="nav-icon">⭐</span> Puntos</a>
     <a href="cotizador.html" data-seccion="cotizador" class="nav-item"><span class="nav-icon">🧮</span> Cotizador</a>
     <a href="finanzas.html" data-seccion="finanzas" class="nav-item"><span class="nav-icon">💰</span> Finanzas</a>
         <a href="distribucion.html" data-seccion="distribucion" class="nav-item">
@@ -103,6 +104,27 @@
 
     </div>
 
+    <!-- SOLICITUDES DESDE EL SITIO WEB (taxi-hidalgo.html → registros_conductores) -->
+    <div class="section-card">
+      <div class="section-header">
+        <h2 class="section-title">Interesados desde el sitio web</h2>
+        <span class="section-badge" id="badge-web">0</span>
+      </div>
+      <div style="padding:0 22px 10px;font-size:12.5px;color:#888;">
+        Personas que llenaron "Únete como conductor" en la página pública. Aún no tienen cuenta: contáctalos para que descarguen la app y se registren.
+      </div>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr><th>Fecha</th><th>Nombre</th><th>Teléfono</th><th>Correo</th><th>Municipio</th><th>Estado</th><th>Acción</th></tr>
+          </thead>
+          <tbody id="tbody-web">
+            <tr class="loading-row"><td colspan="7">Cargando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -166,6 +188,7 @@
 </script>
 
 <script type="module" src="../js/pendientes.js"></script>
+<script type="module" src="../js/solicitudes-web.js"></script>
 
 <script>
   const toggle = document.getElementById('menu-toggle');

@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Puntos — Taxi Admin</title>
+  <link rel="stylesheet" href="../css/styles.css?v=5">
+  <style>
+    /* ===== PUNTOS (solo esta pagina) ===== */
+    .pt { display:flex; flex-direction:column; gap:18px; font-variant-numeric:tabular-nums; }
+    .pt-muted { font-size:12.5px; color:#5f5f6e; }
+    .pt-kpis { display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:12px; }
+    .pt-kpi { background:#fff; border:1px solid #efefef; border-radius:12px; padding:14px 16px; display:flex; flex-direction:column; gap:4px; }
+    .pt-kpi .l { font-size:11.5px; color:#5f5f6e; font-weight:600; }
+    .pt-kpi .v { font-size:22px; font-weight:800; color:var(--dark); }
+    .pt-kpi .t { font-size:11.5px; color:#5f5f6e; }
+    .pt-fila { display:flex; flex-wrap:wrap; gap:18px; align-items:flex-start; }
+    .pt-card { background:#fff; border:1px solid #efefef; border-radius:12px; overflow:hidden; min-width:0; }
+    .pt-card h2 { margin:0; font-size:15px; font-weight:700; color:var(--dark); }
+    .pt-cab { padding:14px 20px; border-bottom:1px solid #f0f0f0; display:flex; justify-content:space-between; gap:10px; align-items:center; flex-wrap:wrap; }
+    .pt-cuerpo { padding:16px 20px; display:flex; flex-direction:column; gap:12px; }
+    .pt-tabla { overflow-x:auto; }
+    .pt-tabla table { width:100%; border-collapse:collapse; font-size:13px; }
+    .pt-tabla th { text-align:left; color:#5f5f6e; font-size:11.5px; font-weight:600; background:#fafafa; padding:9px 10px; white-space:nowrap; }
+    .pt-tabla td { padding:10px; border-top:1px solid #f3f3f3; }
+    .pt-tabla th:first-child, .pt-tabla td:first-child { padding-left:20px; }
+    .pt-tabla th:last-child, .pt-tabla td:last-child { padding-right:20px; }
+    .pt-in { border:1px solid #e0e0e0; border-radius:6px; padding:6px 8px; font-family:inherit; font-size:13px; width:90px; }
+    .pt-par { display:flex; justify-content:space-between; align-items:center; gap:10px; font-size:13px; }
+    .pt-check { display:flex; gap:10px; align-items:flex-start; font-size:13px; }
+    .pt-check input { width:16px; height:16px; accent-color:var(--green); margin-top:2px; }
+    .pt-pill { font-size:11px; font-weight:700; padding:3px 10px; border-radius:10px; white-space:nowrap; }
+    .pt-aviso { padding:10px 14px; border-radius:8px; font-size:13px; font-weight:600; display:none; }
+    .pt-oculto { display:none !important; }
+    .der { text-align:right !important; }
+  </style>
+</head>
+<body>
+
+<div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <span class="logo-icon">🚕</span>
+    <span>Taxi Admin</span>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-label">Principal</div>
+    <a href="dashboard.html" data-seccion="dashboard" class="nav-item"><span class="nav-icon">📊</span> Dashboard</a>
+    <a href="taxistas.html" data-seccion="taxistas" class="nav-item"><span class="nav-icon">🧑‍✈️</span> Taxistas</a>
+    <a href="clientes.html" data-seccion="clientes" class="nav-item"><span class="nav-icon">👤</span> Clientes</a>
+    <a href="viajes.html" data-seccion="viajes" class="nav-item"><span class="nav-icon">🗺️</span> Viajes</a>
+    <div class="nav-label" style="margin-top:12px;">Gestión</div>
+    <a href="reportes.html" data-seccion="reportes" class="nav-item"><span class="nav-icon">📈</span> Reportes</a>
+    <a href="zonas.html" data-seccion="zonas" class="nav-item"><span class="nav-icon">📍</span> Zonas</a>
+    <a href="promociones.html" data-seccion="promociones" class="nav-item"><span class="nav-icon">🎁</span> Promociones</a>
+    <a href="puntos.html" data-seccion="puntos" class="nav-item active"><span class="nav-icon">⭐</span> Puntos</a>
+    <a href="cotizador.html" data-seccion="cotizador" class="nav-item"><span class="nav-icon">🧮</span> Cotizador</a>
+    <a href="finanzas.html" data-seccion="finanzas" class="nav-item"><span class="nav-icon">💰</span> Finanzas</a>
+    <a href="pruebas.html" data-seccion="pruebas" class="nav-item"><span class="nav-icon">🧪</span> Pruebas</a>
+    <a href="distribucion.html" data-seccion="distribucion" class="nav-item"><span class="nav-icon">📲</span> Distribución APK</a>
+    <a href="privacidad.html" data-seccion="privacidad" class="nav-item"><span class="nav-icon">🔒</span> Privacidad</a>
+    <div class="nav-label" style="margin-top:12px;">Administrador</div>
+    <a href="basededatos.html" data-seccion="basededatos" class="nav-item"><span class="nav-icon">🗄️</span> Base de datos</a>
+    <a href="configuracion.html" data-seccion="roles" class="nav-item"><span class="nav-icon">⚙️</span> Roles</a>
+  </nav>
+  <div class="sidebar-footer">
+    <button type="button" class="btn-logout" id="btn-logout"><span>🚪</span> Cerrar sesión</button>
+  </div>
+</aside>
+
+<div class="main-content">
+  <header class="topbar">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <button type="button" class="menu-toggle" id="menu-toggle">☰</button>
+      <h1 class="topbar-title">Puntos para taxistas</h1>
+    </div>
+    <div class="topbar-right">
+      <span class="topbar-date" id="fecha-actual"></span>
+    </div>
+  </header>
+
+  <main class="page-content">
+    <div class="pt">
+      <section class="pt-kpis" id="kpis" aria-label="Resumen del mes"></section>
+
+      <div class="pt-fila">
+        <section class="pt-card" style="flex:999 1 460px;" aria-label="Cómo se ganan">
+          <div class="pt-cab"><h2>Cómo se ganan</h2><span class="pt-muted">Los da el servidor al terminar cada viaje</span></div>
+          <div class="pt-tabla">
+            <table>
+              <thead><tr><th>Acción</th><th>Puntos</th><th>Tope por semana</th><th>Activa</th></tr></thead>
+              <tbody id="tbody-acciones"></tbody>
+            </table>
+          </div>
+          <p class="pt-muted" style="margin:0;padding:10px 20px 16px;">Tope 0 = sin tope. Los viajes de prueba no dan puntos.</p>
+        </section>
+
+        <section class="pt-card" style="flex:1 1 320px;" aria-label="Canje y reglas">
+          <div class="pt-cab"><h2>Canje y reglas</h2></div>
+          <div class="pt-cuerpo">
+            <label class="pt-check"><input type="checkbox" id="c-activo"><span><b>Programa activo</b><br><span class="pt-muted">Apagado: no se dan puntos nuevos ni se puede canjear.</span></span></label>
+            <label class="pt-check"><input type="checkbox" id="c-absorbe"><span><b>El taxista absorbe los descuentos</b><br><span class="pt-muted">Cobra el precio con descuento y no se le abona crédito a su membresía. Apagado: se le abona como antes.</span></span></label>
+            <div class="pt-par"><label for="c-meta">Puntos para canjear</label><input id="c-meta" type="number" min="1" class="pt-in"></div>
+            <div class="pt-par"><label for="c-dias">Días de membresía por canje</label><input id="c-dias" type="number" min="1" class="pt-in"></div>
+            <div class="pt-par"><label for="c-vence">Los puntos vencen a los (días)</label><input id="c-vence" type="number" min="1" class="pt-in"></div>
+            <div class="pt-par"><label for="c-canjes">Canjes por mes (máximo)</label><input id="c-canjes" type="number" min="0" class="pt-in"></div>
+            <div class="pt-par"><label for="c-calif">Calificación mínima para canjear</label><input id="c-calif" type="number" min="0" max="5" step="0.1" class="pt-in"></div>
+            <label class="pt-check"><input type="checkbox" id="c-corriente"><span>Solo si está al corriente en su membresía</span></label>
+            <div class="pt-aviso" id="aviso-guardar"></div>
+            <button type="button" class="btn btn-primary" id="btn-guardar">Guardar reglas</button>
+          </div>
+        </section>
+      </div>
+
+      <section class="pt-card" aria-label="Simulación">
+        <div class="pt-cab"><h2>¿Qué tan difícil es llegar?</h2><span class="pt-muted">Con las reglas de arriba (sin guardar también se actualiza)</span></div>
+        <div class="pt-tabla">
+          <table>
+            <thead><tr><th>Tipo de taxista</th><th class="der">Viajes/semana</th><th class="der">Puntos/semana</th><th>Llega a la meta</th><th>Costo para ti</th></tr></thead>
+            <tbody id="tbody-sim"></tbody>
+          </table>
+        </div>
+        <p class="pt-muted" style="margin:0;padding:10px 20px 16px;">Supone 5% de viajes con promoción y 60% calificados con 5 estrellas.</p>
+      </section>
+
+      <section class="pt-card" aria-label="Saldos de taxistas">
+        <div class="pt-cab"><h2>Saldos de taxistas</h2><span class="pt-muted" id="txt-saldos"></span></div>
+        <div class="pt-tabla">
+          <table>
+            <thead><tr><th>Taxista</th><th class="der">Saldo</th><th>Vencen pronto (15 días)</th><th class="der">Canjes</th><th class="der">Ajustar</th></tr></thead>
+            <tbody id="tbody-saldos"><tr><td colspan="5" style="text-align:center;color:#999;padding:24px;">Cargando...</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<script src="../js/permisos.js"></script>
+<script>
+  Permisos.protegerPagina('puntos');
+  Permisos.aplicarVisibilidadMenu();
+  Permisos.ocultarSiNoPuede('#btn-guardar', 'puntos', 'editar');
+</script>
+<script type="module" src="../js/puntos.js"></script>
+<script>
+  const toggle  = document.getElementById('menu-toggle');
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+  toggle?.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('active'); });
+  overlay?.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('active'); });
+</script>
+</body>
+</html>

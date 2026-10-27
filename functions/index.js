@@ -1,3 +1,4 @@
+const { createHash } = require("crypto");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { defineSecret } = require("firebase-functions/params");
 const { initializeApp } = require("firebase-admin/app");
@@ -184,3 +185,58 @@ function decodePolyline(encoded) {
   }
   return points;
 }
+
+
+/* Registro publico de interes para conductores.
+ * App Check obligatorio; Admin SDK escribe en una coleccion sin lectura
+ * publica. Se limita la frecuencia por IP y se validan datos en servidor. */
+exports.registrarInteresConductor = onCall(
+  { enforceAppCheck: true },
+  async (request) => {
+    const data = request.data ?? {};
+    if (String(data.website ?? '').trim()) return { ok: true };
+
+    const nombre = String(data.nombre ?? '').trim().replace(/\s+/g, ' ');
+    const telefono = String(data.telefono ?? '').replace(/[^+0-9]/g, '');
+    const correo = String(data.correo ?? '').trim().toLowerCase();
+    const estado = String(data.estado ?? '').trim();
+    const municipio = String(data.municipio ?? '').trim();
+    const localidad = String(data.localidad ?? '').trim();
+
+    if (nombre.length < 3 || nombre.length > 100)
+      throw new HttpsError('invalid-argument', 'Escribe tu nombre completo.');
+    if (!/^\+?\d{10,15}$/.test(telefono))
+      throw new HttpsError('invalid-argument', 'Revisa tu numero de telefono.');
+    if (!/^[^\s@]+@(?:gmail\.com|googlemail\.com)$/.test(correo))
+      throw new HttpsError('invalid-argument', 'Usa una direccion Gmail valida.');
+    if (!estado || estado.length > 80 || !municipio || municipio.length > 100)
+      throw new HttpsError('invalid-argument', 'Completa estado y municipio.');
+    if (localidad.length > 120)
+      throw new HttpsError('invalid-argument', 'La localidad es demasiado larga.');
+    if (data.aceptaPrivacidad !== true)
+      throw new HttpsError('failed-precondition', 'Debes aceptar el aviso de privacidad.');
+
+    const db = getFirestore();
+    const ip = request.rawRequest?.ip || 'unknown';
+    const ipHash = createHash('sha256').update(ip).digest('hex').slice(0, 32);
+    const limiteRef = db.collection('_limites_formulario').doc('conductor_' + ipHash);
+    const ahora = Date.now();
+
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(limiteRef);
+      const ultimaVez = snap.exists ? (snap.data().ultimaVezMs || 0) : 0;
+      if (ahora - ultimaVez < 15 * 60 * 1000)
+        throw new HttpsError('resource-exhausted', 'Espera unos minutos antes de volver a enviar.');
+      tx.set(limiteRef, { ultimaVezMs: ahora, expiraMs: ahora + 24 * 60 * 60 * 1000 });
+    });
+
+    await db.collection('registros_conductores').add({
+      nombre, telefono, correo, estado, municipio, localidad,
+      aceptaPrivacidad: true,
+      estadoRegistro: 'nuevo',
+      origen: 'sitio_promocional',
+      createdAt: new Date(),
+    });
+    return { ok: true };
+  }
+);

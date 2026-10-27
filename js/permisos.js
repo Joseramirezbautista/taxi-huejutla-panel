@@ -15,6 +15,7 @@
     { id: 'promociones',  label: 'Promociones' },
     { id: 'cotizador',    label: 'Cotizador y pruebas' },
     { id: 'finanzas',     label: 'Finanzas' },
+    { id: 'puntos',       label: 'Puntos de taxistas' },
     { id: 'tarifas',       label: 'Tarifas' },
     { id: 'suscripciones', label: 'Suscripciones' },
     { id: 'roles',        label: 'Roles' },

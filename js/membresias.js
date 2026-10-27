@@ -12,16 +12,20 @@
 // Documentos:
 //   taxistas/{uid}: pagoProximoVencimiento, pagoFechaFinPrueba, pagoUltimo,
 //     pagoUltimoDetalle, pagoEstado, creditoMembresia, creditoViajes.
-//   taxistas/{uid}/pagos/{id}: tipo ('pago' | 'cortesia'), periodos,
+//   taxistas/{uid}/pagos/{id}: tipo ('pago' | 'cortesia' | 'puntos'), periodos,
 //     diasPorPeriodo, dias (cortesia), membresia, creditoUsado, cobrado,
 //     fecha (cuando pago), desde, hasta, metodo, nota, registradoPor,
 //     registradoEn, anulado, anuladoPor, anuladoEn, motivo.
 //   Finanzas lee estos pagos (fecha, cobrado, creditoUsado) y salta los anulados.
+//   taxistas/{uid}/comprobantes/{id}: lo crea el taxista desde la app (perfil →
+//     Mi membresia) con periodos, monto, metodo, fechaPago, folio, fotoUrl,
+//     estado 'revision'. Aqui se aprueba (registra el pago, misma transaccion)
+//     o se rechaza con un motivo. Datos de cobro: configuracion/cobro.
 import { db, auth } from './app.js';
 import { Auth } from './auth.js';
 import {
   collection, doc, onSnapshot, getDocs, runTransaction, writeBatch, addDoc,
-  serverTimestamp, Timestamp, increment, deleteField,
+  serverTimestamp, Timestamp, increment, deleteField, collectionGroup, updateDoc, setDoc,
 } from 'https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore.js';
 
 Auth.protect();
@@ -332,11 +336,18 @@ const quien = () => auth.currentUser?.email || auth.currentUser?.uid || 'admin';
 
 // En transaccion: el servidor puede estar abonando credito de un viaje que
 // acaba de terminar; asi no se pierde ese abono.
-async function registrarPago(taxistaId, cuando, n, metodo, nota) {
+// comprobante: { id, fotoUrl } cuando se aprueba uno que mando el taxista; se
+// marca aprobado en la misma transaccion (si ya lo reviso otro admin, falla).
+async function registrarPago(taxistaId, cuando, n, metodo, nota, comprobante = null) {
   const ref = doc(db, 'taxistas', taxistaId);
+  const refComp = comprobante ? doc(db, 'taxistas', taxistaId, 'comprobantes', comprobante.id) : null;
   await runTransaction(db, async (tx) => {
     const snap = await tx.get(ref);
     const d = snap.data() || {};
+    if (refComp) {
+      const c = await tx.get(refComp);
+      if (!c.exists() || c.data().estado !== 'revision') throw new Error('Este comprobante ya fue revisado.');
+    }
     const credito = Math.max(0, Math.round(d.creditoMembresia || 0));
     const total = n * config.costo;
     const usado = Math.min(credito, total);
@@ -354,12 +365,20 @@ async function registrarPago(taxistaId, cuando, n, metodo, nota) {
       creditoMembresia: sobra,
       ...(sobra === 0 ? { creditoViajes: 0 } : {}),
     });
-    tx.set(doc(collection(db, 'taxistas', taxistaId, 'pagos')), {
+    const refPago = doc(collection(db, 'taxistas', taxistaId, 'pagos'));
+    tx.set(refPago, {
       tipo: 'pago', periodos: n, diasPorPeriodo: diasPeriodo(),
       membresia: total, creditoUsado: usado, cobrado: cobrar,
       fecha: Timestamp.fromMillis(cuando), desde: Timestamp.fromMillis(desde), hasta: Timestamp.fromMillis(hasta),
       metodo, nota, registradoPor: quien(), registradoEn: serverTimestamp(), anulado: false,
+      ...(comprobante ? { comprobanteId: comprobante.id, fotoUrl: comprobante.fotoUrl || null } : {}),
     });
+    if (refComp) {
+      tx.update(refComp, {
+        estado: 'aprobado', pagoId: refPago.id, hasta: Timestamp.fromMillis(hasta),
+        revisadoPor: quien(), revisadoEn: serverTimestamp(),
+      });
+    }
   });
 }
 
@@ -378,13 +397,14 @@ async function recalcular(taxistaId) {
   let ultimoPago = null;
   for (const p of lista) {
     const f = ms(p.data.fecha);
-    const dur = p.data.tipo === 'cortesia'
+    // Cortesia y canje de puntos: duran sus dias, sin cobro.
+    const dur = (p.data.tipo === 'cortesia' || p.data.tipo === 'puntos')
       ? (Number(p.data.dias) || 0) * DIA
       : (Number(p.data.periodos) || 1) * (Number(p.data.diasPorPeriodo) || diasPeriodo()) * DIA;
     const desde = venc != null && venc > f ? venc : f;
     venc = desde + dur;
     batch.update(p.ref, { desde: Timestamp.fromMillis(desde), hasta: Timestamp.fromMillis(venc) });
-    if (p.data.tipo !== 'cortesia') ultimoPago = p;
+    if (p.data.tipo !== 'cortesia' && p.data.tipo !== 'puntos') ultimoPago = p;
   }
   const hayPagos = lista.length > 0;
   batch.update(refT, {
@@ -469,7 +489,7 @@ function pintarHistorial() {
     </div>
     ${puede() ? `<button type="button" class="btn btn-sm" style="background:#a6dc7a;color:#1a1a2e;font-weight:700;" data-mb-pagar="${t.id}">Registrar pago</button>` : ''}`;
 
-  const vigentes = histPagos.filter((p) => !p.data.anulado && p.data.tipo !== 'cortesia');
+  const vigentes = histPagos.filter((p) => !p.data.anulado && p.data.tipo !== 'cortesia' && p.data.tipo !== 'puntos');
   const inicioMes = new Date(); inicioMes.setDate(1); inicioMes.setHours(0, 0, 0, 0);
   const esteMes = vigentes.filter((p) => (ms(p.data.fecha) || 0) >= inicioMes.getTime()).reduce((a, p) => a + (Number(p.data.cobrado) || 0), 0);
   const conDesde = vigentes.filter((p) => p.data.desde);
@@ -486,6 +506,11 @@ function pintarHistorial() {
   for (const p of histPagos) {
     const x = p.data;
     const f = ms(x.fecha);
+    if (x.tipo === 'puntos') {
+      ev.push({ id: p.id, color: '#E8A33D', anulado: x.anulado, tt: `Canje de puntos: ${x.dias} día${x.dias === 1 ? '' : 's'} de membresía`,
+        dd: `${fecha(f)}${x.hasta ? ` · cubrió hasta ${fecha(ms(x.hasta))}` : ''}`, acciones: '' });
+      continue;
+    }
     if (x.tipo === 'cortesia') {
       ev.push({ id: p.id, color: '#2F6FB2', anulado: x.anulado, tt: `Días de cortesía: ${x.dias} día${x.dias === 1 ? '' : 's'}`,
         dd: `${fecha(f)}${x.hasta ? ` · cubrió hasta ${fecha(ms(x.hasta))}` : ''} · dio: ${esc(x.registradoPor || 'admin')}${x.anulado ? ` · anuló: ${esc(x.anuladoPor || '')}` : ''}`, acciones: !x.anulado ? 'anular' : '' });
@@ -553,7 +578,8 @@ document.addEventListener('click', async (e) => {
 });
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
-  if (!$('mb-modal-pago').classList.contains('mb-oculto')) cerrar('mb-modal-pago');
+  if (!$('cp-modal').classList.contains('mb-oculto')) cerrar('cp-modal');
+  else if (!$('mb-modal-pago').classList.contains('mb-oculto')) cerrar('mb-modal-pago');
   else cerrar('mb-modal-hist');
 });
 ['mb-fecha', 'mb-hora', 'mb-otro'].forEach((id) => $(id).addEventListener('input', () => pago && pintarPago()));
@@ -564,11 +590,180 @@ $('mb-dar-cortesia').addEventListener('click', async () => {
 $('mb-buscar').addEventListener('input', pintarTabla);
 $('mb-orden').addEventListener('change', pintarTabla);
 
+// ===== COMPROBANTES QUE MANDAN LOS TAXISTAS =====
+let comprobantes = [];   // [{ id, taxistaId, data }]
+let cpAbierto = null;
+
+const CP_ESTADO = {
+  revision: ['En revisión', '#FAEEDA', '#633806'],
+  aprobado: ['Aprobado', '#EAF3DE', '#27500A'],
+  rechazado: ['Rechazado', '#FCEBEB', '#791F1F'],
+};
+const datosTax = (id) => taxistas.find((x) => x.id === id)?.data || {};
+const placasDe = (d) => d.vehiculo?.placas || d.placas || '';
+const conceptoDe = (d) => 'TH-' + String(placasDe(d)).replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+
+function pintarComprobantes() {
+  const pend = comprobantes.filter((c) => c.data.estado === 'revision');
+  $('cp-badge').textContent = pend.length ? `${pend.length} por revisar` : 'Al día';
+  // Pendientes primero; despues lo revisado en los ultimos 7 dias.
+  const semana = Date.now() - 7 * DIA;
+  const filas = comprobantes
+    .filter((c) => c.data.estado === 'revision' || (ms(c.data.revisadoEn) || ms(c.data.creadoEn) || 0) > semana)
+    .sort((a, b) => {
+      const pa = a.data.estado === 'revision' ? 0 : 1;
+      const pb = b.data.estado === 'revision' ? 0 : 1;
+      return pa - pb || (ms(b.data.creadoEn) || 0) - (ms(a.data.creadoEn) || 0);
+    });
+  if (!filas.length) {
+    $('cp-tbody').innerHTML = '<tr><td colspan="7" style="text-align:center;color:#999;padding:22px;">No hay comprobantes nuevos.</td></tr>';
+    return;
+  }
+  $('cp-tbody').innerHTML = filas.map((c) => {
+    const d = c.data; const t = datosTax(c.taxistaId);
+    const [et, bg, fg] = CP_ESTADO[d.estado] || CP_ESTADO.revision;
+    const n = Number(d.periodos) || 1;
+    const esperado = n * config.costo - Math.max(0, Math.round(t.creditoMembresia || 0));
+    const avisoMonto = d.estado === 'revision' && Number(d.monto) < esperado
+      ? `<div class="mb-sub" style="color:#791F1F;">Esperado ${pesos(esperado)}</div>` : '';
+    return `<tr>
+      <td style="white-space:nowrap;">${ms(d.creadoEn) ? fecha(ms(d.creadoEn)) : '—'}</td>
+      <td><b>${esc(t.nombre || 'Taxista')}</b><div class="mb-sub">${esc(placasDe(t))}</div></td>
+      <td>${n} ${nombrePeriodo(n)}</td>
+      <td><b>${pesos(d.monto)}</b>${avisoMonto}</td>
+      <td>${esc(d.metodo || '—')}</td>
+      <td><span class="mb-pill" style="background:${bg};color:${fg};">${et}</span>${d.estado === 'rechazado' && d.motivo ? `<div class="mb-sub">${esc(d.motivo)}</div>` : ''}</td>
+      <td class="mb-acciones"><button type="button" class="btn ${d.estado === 'revision' ? 'btn-primary' : 'btn-outline'} btn-sm" data-cp-abrir="${esc(c.taxistaId)}/${esc(c.id)}">${d.estado === 'revision' ? 'Revisar' : 'Ver'}</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function abrirComprobante(clave) {
+  const c = comprobantes.find((x) => `${x.taxistaId}/${x.id}` === clave);
+  if (!c) return;
+  cpAbierto = c;
+  const d = c.data; const t = datosTax(c.taxistaId);
+  const n = Number(d.periodos) || 1;
+  const cuando = ms(d.fechaPago) || ms(d.creadoEn) || Date.now();
+  const enRevision = d.estado === 'revision';
+  $('cp-titulo').textContent = [t.nombre || 'Taxista', placasDe(t)].filter(Boolean).join(' · ');
+  $('cp-sub').textContent = `Enviado ${ms(d.creadoEn) ? fecha(ms(d.creadoEn)) : '—'}`;
+  $('cp-foto').src = d.fotoUrl || '';
+  $('cp-foto-link').href = d.fotoUrl || '#';
+  $('cp-foto-link').style.display = d.fotoUrl ? 'block' : 'none';
+  const campo = (l, v, full) => `<div class="mb-campo"${full ? ' style="grid-column:1 / -1;"' : ''}><span class="mb-etq">${l}</span><b style="overflow-wrap:anywhere;">${v}</b></div>`;
+  $('cp-datos').innerHTML = [
+    campo('Monto que pagó', pesos(d.monto)),
+    campo('Paga', `${n} ${nombrePeriodo(n)} (${pesos(n * config.costo)})`),
+    campo('Método', esc(d.metodo || '—')),
+    campo('Pagó el', fecha(cuando)),
+    d.folio ? campo('Folio / rastreo', esc(d.folio), true) : '',
+    !enRevision ? campo('Estado', `${(CP_ESTADO[d.estado] || CP_ESTADO.revision)[0]}${d.motivo ? ' · ' + esc(d.motivo) : ''}${d.revisadoPor ? ' · ' + esc(d.revisadoPor) : ''}`, true) : '',
+  ].join('');
+  const { venc } = vencimientoDe(t);
+  const desde = venc != null && venc > cuando ? venc : cuando;
+  const hasta = desde + n * diasPeriodo() * DIA;
+  $('cp-queda').innerHTML = `<div><span>Vence ahora</span><b>${venc ? fecha(venc) : 'Sin membresía'}</b></div>
+    <div><span>Suma</span><b>${n} ${nombrePeriodo(n)}</b></div>
+    <div><span>Queda hasta</span><b style="color:#27500A;">${fecha(hasta)}</b></div>`;
+  $('cp-concepto').textContent = d.metodo === 'Efectivo'
+    ? 'Pago en efectivo: confirma que recibiste el dinero antes de aprobar.'
+    : `Revisa en tu banco que entró ${pesos(d.monto)} con el concepto ${conceptoDe(t)} antes de aprobar.`;
+  $('cp-motivo-caja').style.display = enRevision ? '' : 'none';
+  $('cp-pie').style.display = enRevision && puede() ? '' : 'none';
+  $('cp-aprobar').textContent = `Aprobar y sumar ${n} ${nombrePeriodo(n)}`;
+  $('cp-aprobar').disabled = false; $('cp-rechazar').disabled = false;
+  $('cp-error').classList.add('mb-oculto');
+  $('cp-modal').classList.remove('mb-oculto');
+}
+
+function errorCp(txt) {
+  $('cp-error').textContent = txt;
+  $('cp-error').classList.remove('mb-oculto');
+}
+
+async function aprobarComprobante() {
+  const c = cpAbierto;
+  if (!c || !puede()) return;
+  const d = c.data;
+  const n = Math.max(1, Math.min(52, Number(d.periodos) || 1));
+  // La fecha que pone el taxista no puede quedar en el futuro.
+  const cuando = Math.min(ms(d.fechaPago) || ms(d.creadoEn) || Date.now(), Date.now());
+  $('cp-aprobar').disabled = true; $('cp-rechazar').disabled = true;
+  try {
+    const nota = ['Comprobante de la app', d.folio ? 'folio ' + d.folio : ''].filter(Boolean).join(' · ');
+    await registrarPago(c.taxistaId, cuando, n, d.metodo || 'Transferencia', nota.slice(0, 80), { id: c.id, fotoUrl: d.fotoUrl });
+    cerrar('cp-modal');
+  } catch (e) {
+    errorCp('No se pudo aprobar: ' + e.message);
+    $('cp-aprobar').disabled = false; $('cp-rechazar').disabled = false;
+  }
+}
+
+async function rechazarComprobante() {
+  const c = cpAbierto;
+  if (!c || !puede()) return;
+  $('cp-aprobar').disabled = true; $('cp-rechazar').disabled = true;
+  try {
+    await updateDoc(doc(db, 'taxistas', c.taxistaId, 'comprobantes', c.id), {
+      estado: 'rechazado', motivo: $('cp-motivo').value, revisadoPor: quien(), revisadoEn: serverTimestamp(),
+    });
+    cerrar('cp-modal');
+  } catch (e) {
+    errorCp('No se pudo rechazar: ' + e.message);
+    $('cp-aprobar').disabled = false; $('cp-rechazar').disabled = false;
+  }
+}
+
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-cp-abrir]');
+  if (b) abrirComprobante(b.dataset.cpAbrir);
+});
+$('cp-aprobar').addEventListener('click', aprobarComprobante);
+$('cp-rechazar').addEventListener('click', rechazarComprobante);
+
+// Sin filtro en la consulta: un filtro sobre collectionGroup pediria un indice
+// aparte; son pocos documentos y se filtran aqui.
+onSnapshot(collectionGroup(db, 'comprobantes'), (snap) => {
+  comprobantes = snap.docs.map((d) => ({ id: d.id, taxistaId: d.ref.parent.parent.id, data: d.data() }));
+  pintarComprobantes();
+}, (e) => {
+  $('cp-tbody').innerHTML = `<tr><td colspan="7" style="color:#c00;padding:18px;">No se pudieron cargar: ${esc(e.message)}</td></tr>`;
+});
+
+// ===== DATOS DE COBRO (los ve el taxista al pagar) =====
+const REF_COBRO = doc(db, 'configuracion', 'cobro');
+const CAMPOS_COBRO = ['banco', 'titular', 'clabe', 'tarjeta', 'efectivo'];
+onSnapshot(REF_COBRO, (snap) => {
+  const d = snap.data() || {};
+  CAMPOS_COBRO.forEach((k) => { if (document.activeElement !== $('cobro-' + k)) $('cobro-' + k).value = d[k] || ''; });
+  $('cobro-badge').textContent = d.clabe || d.tarjeta || d.efectivo ? 'Configurado' : 'Falta configurar';
+});
+$('cobro-guardar').addEventListener('click', async (e) => {
+  if (!puede()) return;
+  const btn = e.currentTarget;
+  const v = Object.fromEntries(CAMPOS_COBRO.map((k) => [k, $('cobro-' + k).value.trim()]));
+  v.clabe = v.clabe.replace(/\D/g, '');
+  v.tarjeta = v.tarjeta.replace(/\D/g, '');
+  if (v.clabe && v.clabe.length !== 18) { $('cobro-estado').textContent = 'La CLABE debe tener 18 dígitos.'; return; }
+  if (v.tarjeta && v.tarjeta.length !== 16) { $('cobro-estado').textContent = 'La tarjeta debe tener 16 dígitos.'; return; }
+  btn.disabled = true;
+  try {
+    await setDoc(REF_COBRO, { ...v, actualizadoPor: quien(), actualizadoEn: serverTimestamp() });
+    $('cobro-estado').textContent = 'Guardado. Los taxistas ya lo ven en la app.';
+  } catch (err) {
+    $('cobro-estado').textContent = 'No se pudo guardar: ' + err.message;
+  } finally {
+    btn.disabled = false;
+  }
+});
+
 // ===== DATOS EN VIVO =====
 onSnapshot(COL_TAX, (snap) => {
   taxistas = snap.docs.map((d) => ({ id: d.id, data: d.data() }));
   pintarTabla();
   if (histId) pintarHistorial();
+  pintarComprobantes();
 });
 onSnapshot(REF_CFG, (snap) => {
   if (snap.exists()) {

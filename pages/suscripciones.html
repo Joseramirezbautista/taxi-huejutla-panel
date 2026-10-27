@@ -79,6 +79,7 @@
     <a href="reportes.html" data-seccion="reportes" class="nav-item"><span class="nav-icon">📈</span> Reportes</a>
     <a href="zonas.html" data-seccion="zonas" class="nav-item"><span class="nav-icon">📍</span> Zonas</a>
     <a href="promociones.html" data-seccion="promociones" class="nav-item"><span class="nav-icon">🎁</span> Promociones</a>
+    <a href="puntos.html" data-seccion="puntos" class="nav-item"><span class="nav-icon">⭐</span> Puntos</a>
     <a href="cotizador.html" data-seccion="cotizador" class="nav-item"><span class="nav-icon">🧮</span> Cotizador</a>
     <a href="finanzas.html" data-seccion="finanzas" class="nav-item"><span class="nav-icon">💰</span> Finanzas</a>
     <a href="pruebas.html" data-seccion="pruebas" class="nav-item"><span class="nav-icon">🧪</span> Pruebas</a>
@@ -300,6 +301,45 @@
       </div>
     </div>
 
+    <!-- COMPROBANTES QUE MANDAN LOS TAXISTAS DESDE LA APP (membresias.js) -->
+    <div class="section-card" id="cp-seccion">
+      <div class="section-header">
+        <h2 class="section-title">Comprobantes por revisar</h2>
+        <span class="section-badge" id="cp-badge">—</span>
+      </div>
+      <p class="mb-sub" style="padding:0 22px 10px;margin:0;">Los taxistas pagan y suben la foto desde su perfil en la app. Revisa en tu banco que entró el dinero y apruébalo: se registra el pago y se suman sus días.</p>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr><th>Enviado</th><th>Taxista</th><th>Paga</th><th>Monto</th><th>Método</th><th>Estado</th><th class="th-right">Acción</th></tr>
+          </thead>
+          <tbody id="cp-tbody">
+            <tr class="loading-row"><td colspan="7">Cargando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- DATOS DE COBRO QUE VE EL TAXISTA AL PAGAR (configuracion/cobro) -->
+    <div class="section-card" id="cobro-seccion">
+      <div class="section-header">
+        <h2 class="section-title">Datos de cobro</h2>
+        <span class="section-badge" id="cobro-badge">—</span>
+      </div>
+      <p class="mb-sub" style="padding:0 22px 10px;margin:0;">Es lo que ve el taxista en la app cuando va a pagar. Lo puede leer cualquier usuario con sesión: pon solo datos para recibir pagos.</p>
+      <div class="mb-dos" style="padding:0 22px 18px;">
+        <div class="mb-campo"><label for="cobro-banco">Banco</label><input id="cobro-banco" class="config-input" maxlength="40" placeholder="Ej. BBVA"></div>
+        <div class="mb-campo"><label for="cobro-titular">A nombre de</label><input id="cobro-titular" class="config-input" maxlength="80" placeholder="Nombre del titular"></div>
+        <div class="mb-campo"><label for="cobro-clabe">CLABE (transferencia)</label><input id="cobro-clabe" class="config-input" inputmode="numeric" maxlength="18" placeholder="18 dígitos"></div>
+        <div class="mb-campo"><label for="cobro-tarjeta">Tarjeta (depósito en OXXO)</label><input id="cobro-tarjeta" class="config-input" inputmode="numeric" maxlength="16" placeholder="16 dígitos"></div>
+        <div class="mb-campo" style="grid-column:1 / -1;"><label for="cobro-efectivo">Pago en efectivo: ¿con quién o dónde?</label><input id="cobro-efectivo" class="config-input" maxlength="120" placeholder="Ej. Con Jose en la base, de 9 a 18 h"></div>
+        <div style="grid-column:1 / -1;display:flex;gap:10px;align-items:center;">
+          <button type="button" class="btn btn-primary btn-sm" id="cobro-guardar">Guardar datos de cobro</button>
+          <span class="mb-sub" id="cobro-estado" style="margin:0;"></span>
+        </div>
+      </div>
+    </div>
+
     <!-- ESTADO DE PAGO POR TAXISTA (lo llena membresias.js) -->
     <div class="section-card" id="mb-seccion">
       <div class="section-header">
@@ -374,6 +414,40 @@
     <div class="mb-pie">
       <button type="button" class="btn btn-outline" data-mb-cerrar="mb-modal-pago">Cancelar</button>
       <button type="button" class="btn btn-primary" id="mb-confirmar">Confirmar pago</button>
+    </div>
+  </div>
+</div>
+
+<!-- VENTANA: REVISAR COMPROBANTE -->
+<div class="mb-modal mb-oculto" id="cp-modal" role="dialog" aria-modal="true" aria-labelledby="cp-titulo">
+  <div class="mb-dialogo" style="width:min(820px, 100%);">
+    <div class="mb-cab">
+      <div><h2 id="cp-titulo">Comprobante</h2><p id="cp-sub" class="mb-sub"></p></div>
+      <button type="button" class="mb-cerrar" data-mb-cerrar="cp-modal" aria-label="Cerrar">×</button>
+    </div>
+    <div class="mb-cuerpo" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));gap:20px;">
+      <a id="cp-foto-link" href="#" target="_blank" rel="noopener" style="display:block;border:1px solid #eee;border-radius:12px;overflow:hidden;background:#f6f6f6;min-height:200px;">
+        <img id="cp-foto" alt="Foto del comprobante" style="width:100%;display:block;max-height:520px;object-fit:contain;">
+      </a>
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div class="mb-dos" id="cp-datos" style="grid-template-columns:repeat(2, minmax(0, 1fr));"></div>
+        <section class="mb-queda"><div class="mb-queda-tit">Si lo apruebas</div><div class="mb-tres" id="cp-queda"></div></section>
+        <span class="mb-nota" id="cp-concepto"></span>
+        <div class="mb-campo" id="cp-motivo-caja"><label for="cp-motivo">Motivo si lo rechazas</label>
+          <select id="cp-motivo" class="config-input">
+            <option>La foto no se lee</option>
+            <option>El monto no coincide</option>
+            <option>No encontramos el pago en la cuenta</option>
+            <option>Comprobante repetido</option>
+            <option>Otro: contáctanos</option>
+          </select>
+        </div>
+        <div class="mb-error mb-oculto" id="cp-error"></div>
+      </div>
+    </div>
+    <div class="mb-pie" id="cp-pie">
+      <button type="button" class="btn btn-outline" id="cp-rechazar" style="color:#791F1F;border-color:#f2c4c0;">Rechazar</button>
+      <button type="button" class="btn btn-success" id="cp-aprobar">Aprobar</button>
     </div>
   </div>
 </div>
